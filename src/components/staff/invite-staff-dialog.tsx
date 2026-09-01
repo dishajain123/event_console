@@ -42,7 +42,7 @@ export function InviteStaffDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { role_name: "staff_member", role_label: "" },
+    defaultValues: { role_name: "event_manager", role_label: "" },
   });
 
   if (!open) return null;

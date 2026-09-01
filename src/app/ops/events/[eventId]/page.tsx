@@ -2,7 +2,17 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { ArrowLeft, Settings2, BarChart3, CalendarDays, Tag, ClipboardList, Users2, Radio } from "lucide-react";
+import {
+  ArrowLeft,
+  Settings2,
+  BarChart3,
+  CalendarDays,
+  Layers3,
+  ClipboardList,
+  Users2,
+  Radio,
+  Building2,
+} from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +23,22 @@ import { EventStatusStepper } from "@/components/events/event-status-stepper";
 import { VenuesPanel, SchedulePanel } from "@/components/events/venue-schedule-panels";
 import { useEvent } from "@/hooks/useEvents";
 import { EVENT_STATUS_LABELS, type EventStatus } from "@/types/events";
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  return new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatList(value: string[] | undefined | null): string {
+  if (!value || value.length === 0) return "—";
+  return value.join(", ");
+}
 
 const STATUS_TONE: Record<EventStatus, "neutral" | "accent" | "success" | "warning" | "info"> = {
   draft: "neutral",
@@ -64,10 +90,13 @@ export default function EventDetailPage({
             <GlassPanel className="rise-in">
               <div className="mb-5 flex flex-wrap items-center gap-3">
                 <Badge tone={STATUS_TONE[event.status]}>{EVENT_STATUS_LABELS[event.status]}</Badge>
-                {event.category && (
+                {(event.main_category || event.sub_category || event.category) && (
                   <span className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]">
-                    <Tag className="h-3.5 w-3.5" />
-                    {event.category}
+                    <Layers3 className="h-3.5 w-3.5" />
+                    {event.main_category?.name || event.category || "—"}
+                    {event.sub_category?.name && (
+                      <span className="text-[var(--foreground-subtle)]">/ {event.sub_category.name}</span>
+                    )}
                   </span>
                 )}
                 <span className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]">
@@ -95,6 +124,14 @@ export default function EventDetailPage({
 
             <GlassPanel className="rise-in flex flex-col gap-3">
               <p className="text-sm font-semibold text-[var(--foreground)]">Manage this event</p>
+              <div className="rounded-[var(--radius-sm)] border border-black/[0.05] bg-white/60 p-3 text-sm text-[var(--foreground-muted)]">
+                <div className="mb-2 flex items-center gap-2 text-[var(--foreground)]">
+                  <Building2 className="h-4 w-4" />
+                  <span className="font-medium">Organizer</span>
+                </div>
+                <p>{event.organizer?.name ?? "Unassigned"}</p>
+                <p>{event.organizer?.mobile_number ?? "No mobile number"}</p>
+              </div>
               <Link href={`/ops/events/${event.id}/registrations`}>
                 <Button variant="outline" className="w-full justify-start gap-2.5">
                   <ClipboardList className="h-4 w-4" />
@@ -125,6 +162,86 @@ export default function EventDetailPage({
                   Event Reports
                 </Button>
               </Link>
+            </GlassPanel>
+          </div>
+
+          <div className="mb-6">
+            <GlassPanel>
+              <h2 className="mb-4 text-sm font-semibold text-[var(--foreground)]">Event details</h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div>
+                  <p className="text-xs text-[var(--foreground-subtle)]">Registration window</p>
+                  <p className="text-sm text-[var(--foreground)]">
+                    {formatDateTime(event.configuration?.details?.registration_start_at)} to{" "}
+                    {formatDateTime(event.configuration?.details?.registration_end_at)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--foreground-subtle)]">Event window</p>
+                  <p className="text-sm text-[var(--foreground)]">
+                    {formatDateTime(event.configuration?.details?.event_start_at)} to{" "}
+                    {formatDateTime(event.configuration?.details?.event_end_at)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--foreground-subtle)]">Venue</p>
+                  <p className="text-sm text-[var(--foreground)]">
+                    {event.configuration?.details?.venue_name ?? "—"}
+                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    {event.configuration?.details?.venue_address ?? event.configuration?.details?.venue_location ?? "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--foreground-subtle)]">Eligibility</p>
+                  <p className="text-sm text-[var(--foreground)]">
+                    {event.configuration?.details?.age_group ?? "—"}
+                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Min {event.configuration?.details?.age_min ?? "—"} / Max {event.configuration?.details?.age_max ?? "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--foreground-subtle)]">Capacity</p>
+                  <p className="text-sm text-[var(--foreground)]">
+                    {event.configuration?.details?.minimum_participants ?? "—"} to{" "}
+                    {event.configuration?.details?.maximum_participants ?? "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--foreground-subtle)]">Event type</p>
+                  <p className="text-sm text-[var(--foreground)]">
+                    {event.configuration?.details?.event_type ?? "—"}
+                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Team size {event.configuration?.details?.team_size_min ?? "—"} to{" "}
+                    {event.configuration?.details?.team_size_max ?? "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--foreground-subtle)]">Gender eligibility</p>
+                  <p className="text-sm text-[var(--foreground)]">
+                    {event.configuration?.details?.gender_eligibility ?? "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--foreground-subtle)]">Required documents</p>
+                  <p className="text-sm text-[var(--foreground)]">
+                    {formatList(event.configuration?.details?.required_documents)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--foreground-subtle)]">Contact</p>
+                  <p className="text-sm text-[var(--foreground)]">
+                    {event.configuration?.details?.contact_name ?? "—"}
+                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    {event.configuration?.details?.contact_email ?? "—"}
+                    {" · "}
+                    {event.configuration?.details?.contact_phone ?? "—"}
+                  </p>
+                </div>
+              </div>
             </GlassPanel>
           </div>
 

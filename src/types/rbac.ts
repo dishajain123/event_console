@@ -9,24 +9,19 @@ export const CONSOLE_ROLE_NAMES = [
   "event_manager",
 ] as const;
 
-/** Full backend role set — includes the mobile-only Staff Mode roles too,
- * since role-assignment payloads can reference any of them. */
+/** Canonical role names exposed to the console and session model. */
 export type RoleName =
   | "super_admin"
   | "operations_admin"
   | "finance_admin"
   | "finance_operator"
   | "finance_auditor"
-  | "event_manager"
-  | "event_coordinator"
-  | "staff_lead"
-  | "staff_member";
+  | "event_manager";
 
 /** The subset of RoleName that ever grants a Console login. */
 export type ConsoleRoleName = (typeof CONSOLE_ROLE_NAMES)[number];
 
-/** Roles global admins (Super Admin) can provision directly via
- * /users/find-or-create + /users/{id}/role-assignments. */
+/** Roles that the console can provision for admin-level users. */
 export type ProvisionableGlobalRole =
   | "operations_admin"
   | "finance_admin"

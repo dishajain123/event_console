@@ -12,8 +12,16 @@ import type {
   VenueOut,
 } from "@/types/events";
 
-export async function listEvents(): Promise<EventOut[]> {
-  const { data } = await apiClient.get<EventOut[]>("/events");
+export async function listEvents(filters?: {
+  mainCategoryId?: string;
+  subCategoryId?: string;
+}): Promise<EventOut[]> {
+  const { data } = await apiClient.get<EventOut[]>("/events", {
+    params: {
+      main_category_id: filters?.mainCategoryId,
+      sub_category_id: filters?.subCategoryId,
+    },
+  });
   return data;
 }
 

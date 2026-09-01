@@ -9,13 +9,9 @@ export const STAFF_ASSIGNMENT_STATUS_LABELS: Record<StaffAssignmentStatus, strin
   revoked: "Revoked",
 };
 
-/** The four scoped roles that can be invited as staff — mirrors
- * app/modules/rbac/models.py SCOPED_ROLES exactly. */
+/** Deprecated staff UI now only exposes Event Manager. */
 export const STAFF_ROLE_OPTIONS: { value: RoleName; label: string }[] = [
   { value: "event_manager", label: "Event Manager" },
-  { value: "event_coordinator", label: "Event Coordinator" },
-  { value: "staff_lead", label: "Staff Lead" },
-  { value: "staff_member", label: "Staff Member" },
 ];
 
 export interface StaffAssignmentOut {

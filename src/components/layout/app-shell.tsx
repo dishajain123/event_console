@@ -9,7 +9,7 @@ export function AppShell({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto flex max-w-[1600px] gap-4 p-4">
+    <div className="flex min-h-screen w-full gap-4 p-4">
       <Sidebar area={area} />
       <main className="min-w-0 flex-1 pb-10">{children}</main>
     </div>

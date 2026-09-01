@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import {
   LayoutGrid,
   CalendarDays,
+  Layers3,
   ClipboardList,
   Users2,
-  UserCog,
   ShieldCheck,
   Image as ImageIcon,
   Handshake,
@@ -26,11 +26,9 @@ import { useSessionStore } from "@/state/sessionStore";
 import { useUiStore } from "@/state/uiStore";
 import {
   isOperationsAdmin,
-  isFinanceAdmin,
-  isFinanceOperator,
-  isFinanceAuditor,
   isScopedOnlyEventManager,
   canAccessFinanceConsole,
+  canAccessAccountManagement,
 } from "@/lib/rbac";
 
 interface NavItem {
@@ -53,11 +51,11 @@ function useOpsNavItems(): NavItem[] {
   const items: NavItem[] = [
     { label: "Dashboard", href: "/ops/dashboard", icon: LayoutGrid },
     { label: "Events", href: "/ops/events", icon: CalendarDays },
-    { label: "Staff Accounts", href: "/ops/staff", icon: Users2 },
+    { label: "Categories", href: "/ops/categories", icon: Layers3 },
   ];
 
-  if (isOperationsAdmin(roles)) {
-    items.push({ label: "Admin Accounts", href: "/ops/admin-accounts", icon: UserCog });
+  if (canAccessAccountManagement(roles)) {
+    items.push({ label: "Accounts", href: "/ops/accounts", icon: Users2 });
   }
 
   items.push(
@@ -75,13 +73,17 @@ function useFinanceNavItems(): NavItem[] {
   const roles = useSessionStore((s) => s.roles);
   const items: NavItem[] = [{ label: "Dashboard", href: "/finance/dashboard", icon: Wallet }];
 
-  if (isFinanceAdmin(roles) || isFinanceOperator(roles) || isFinanceAuditor(roles)) {
+  if (canAccessFinanceConsole(roles)) {
     items.push(
       { label: "Transactions", href: "/finance/transactions", icon: Receipt },
       { label: "Reconciliation", href: "/finance/reconciliation", icon: Scale },
       { label: "Refunds", href: "/finance/refunds", icon: RotateCcw },
       { label: "Reports", href: "/finance/reports", icon: BarChart3 },
     );
+  }
+
+  if (canAccessAccountManagement(roles)) {
+    items.splice(1, 0, { label: "Accounts", href: "/finance/accounts", icon: Users2 });
   }
   return items;
 }

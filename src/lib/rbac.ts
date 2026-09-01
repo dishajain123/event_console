@@ -21,6 +21,12 @@ export function canAccessFinanceConsole(roles: SessionRoles): boolean {
   );
 }
 
+export function canAccessAccountManagement(roles: SessionRoles): boolean {
+  return roles.global.some(
+    (r) => r === "super_admin" || r === "operations_admin" || r === "finance_admin",
+  );
+}
+
 export function isSuperAdmin(roles: SessionRoles): boolean {
   return roles.global.includes("super_admin");
 }

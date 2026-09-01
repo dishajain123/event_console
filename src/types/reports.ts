@@ -45,6 +45,50 @@ export interface PlatformFinancialReportOut {
   events: EventFinancialReportOut[];
 }
 
+export interface EventManagerOverviewOut {
+  user_id: string | null;
+  name: string | null;
+  mobile_number: string | null;
+  total_events: number;
+  upcoming_events: number;
+  active_events: number;
+  completed_events: number;
+}
+
+export interface EventDashboardItemOut {
+  event_id: string;
+  event_name: string;
+  organizer_user_id: string | null;
+  organizer_name: string | null;
+  organizer_mobile_number: string | null;
+  main_category: string | null;
+  sub_category: string | null;
+  status: string;
+  start_date: string;
+  end_date: string;
+  total_registrations: number;
+  active_registrations: number;
+  capacity: number | null;
+  registration_status: string;
+  is_full: boolean;
+}
+
+export interface EventOperationsOverviewOut {
+  total_events: number;
+  upcoming_events: number;
+  active_events: number;
+  completed_events: number;
+  draft_events: number;
+  unpublished_events: number;
+  registration_open_events: number;
+  registration_closed_events: number;
+  events_at_full_capacity: number;
+  total_registrations: number;
+  active_registrations: number;
+  event_manager_overview: EventManagerOverviewOut[];
+  events: EventDashboardItemOut[];
+}
+
 export interface EventSummaryReportOut {
   event_id: string;
   event_name: string;
@@ -57,4 +101,3 @@ export interface EventSummaryReportOut {
   total_check_ins: number;
   revenue_collected: string | number;
 }
-

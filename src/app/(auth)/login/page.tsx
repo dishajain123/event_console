@@ -6,9 +6,11 @@ import { ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GlassPanel } from "@/components/ui/glass-panel";
+import { MobileNumberField } from "@/components/shared/mobile-number-field";
 import { useLogin } from "@/hooks/useAuth";
 import { getPostLoginRedirect } from "@/lib/rbac";
 import type { ApiError } from "@/api/client";
+import { formatIndianMobileDisplay, normalizeIndianMobileNumber } from "@/lib/phone";
 
 type Step = "mobile" | "otp";
 
@@ -29,7 +31,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await requestOtp(mobileNumber);
+      const res = await requestOtp(normalizeIndianMobileNumber(mobileNumber));
       setStep("otp");
       setResendIn(res.resend_available_in_seconds);
       setTimeout(() => otpInputRef.current?.focus(), 50);
@@ -55,7 +57,8 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const { roleAssignments } = await verifyOtp(mobileNumber, otp);
+      const normalizedMobileNumber = normalizeIndianMobileNumber(mobileNumber);
+      const { roleAssignments } = await verifyOtp(normalizedMobileNumber, otp);
       const roles = {
         global: roleAssignments.filter((r) => r.event_id === null).map((r) => r.role_name),
         scopedEventManagerEventIds: roleAssignments
@@ -98,24 +101,17 @@ export default function LoginPage() {
         <GlassPanel strong className="rise-in p-8">
           {step === "mobile" ? (
             <form onSubmit={handleRequestOtp} className="space-y-5">
-              <div>
-                <label htmlFor="mobile" className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">
-                  Mobile number
-                </label>
-                <Input
-                  id="mobile"
-                  type="tel"
-                  inputMode="tel"
-                  autoFocus
-                  placeholder="+91 98765 43210"
-                  value={mobileNumber}
-                  onChange={(e) => setMobileNumber(e.target.value)}
-                  error={!!error}
-                  required
-                />
-              </div>
-              {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
-              <Button type="submit" className="w-full" loading={loading}>
+              <MobileNumberField
+                id="mobile"
+                label="Mobile number"
+                value={mobileNumber}
+                onChange={setMobileNumber}
+                autoFocus
+                error={!!error}
+                errorMessage={error}
+                placeholder="98765 43210"
+              />
+              <Button type="submit" className="w-full" loading={loading} disabled={loading || mobileNumber.length !== 10}>
                 Send code
                 {!loading && <ArrowRight className="h-4 w-4" />}
               </Button>
@@ -128,7 +124,7 @@ export default function LoginPage() {
               <div>
                 <p className="mb-1.5 text-sm font-medium text-[var(--foreground)]">Enter the 6-digit code</p>
                 <p className="mb-3 text-xs text-[var(--foreground-muted)]">
-                  Sent to <span className="font-medium text-[var(--foreground)]">{mobileNumber}</span>
+                  Sent to <span className="font-medium text-[var(--foreground)]">{formatIndianMobileDisplay(`+91${mobileNumber}`)}</span>
                 </p>
                 <Input
                   ref={otpInputRef}
@@ -137,7 +133,7 @@ export default function LoginPage() {
                   maxLength={8}
                   placeholder="••••••"
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   onKeyDown={handleOtpKeyDown}
                   error={!!error}
                   className="text-center text-lg tracking-[0.5em]"

@@ -1,6 +1,5 @@
 import { apiClient } from "@/api/client";
-import type { OTPRequestOut, UserOut } from "@/types/identity";
-import type { ProvisionableGlobalRole } from "@/types/rbac";
+import type { AccountOut, AccountStatusUpdateIn, OTPRequestOut, UserOut } from "@/types/identity";
 
 /**
  * OTP request carries no secrets, so it goes straight to the backend —
@@ -54,9 +53,12 @@ export async function findOrCreateUserForProvisioning(
   return data;
 }
 
-export const PROVISIONABLE_GLOBAL_ROLES: { value: ProvisionableGlobalRole; label: string }[] = [
-  { value: "operations_admin", label: "Operations Admin" },
-  { value: "finance_admin", label: "Finance Admin" },
-  { value: "finance_operator", label: "Finance Operator" },
-  { value: "finance_auditor", label: "Finance Auditor" },
-];
+export async function listAccounts(): Promise<AccountOut[]> {
+  const { data } = await apiClient.get<AccountOut[]>("/users/accounts");
+  return data;
+}
+
+export async function updateAccountStatus(userId: string, payload: AccountStatusUpdateIn): Promise<UserOut> {
+  const { data } = await apiClient.patch<UserOut>(`/users/${userId}/status`, payload);
+  return data;
+}

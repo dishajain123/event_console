@@ -18,7 +18,8 @@ import { useSessionStore } from "@/state/sessionStore";
 import type { EventCreateIn, EventStatus, EventUpdateIn, ScheduleItemIn, SponsorIn, VenueIn } from "@/types/events";
 
 export const eventsQueryKeys = {
-  all: ["events"] as const,
+  all: (mainCategoryId?: string, subCategoryId?: string) =>
+    ["events", mainCategoryId ?? "all", subCategoryId ?? "all"] as const,
   detail: (eventId: string) => ["events", eventId] as const,
   venues: (eventId: string) => ["events", eventId, "venues"] as const,
   schedule: (eventId: string) => ["events", eventId, "schedule"] as const,
@@ -31,9 +32,13 @@ function useReady() {
   return hydrated && !!user;
 }
 
-export function useEvents() {
+export function useEvents(filters?: { mainCategoryId?: string; subCategoryId?: string }) {
   const ready = useReady();
-  return useQuery({ queryKey: eventsQueryKeys.all, queryFn: listEvents, enabled: ready });
+  return useQuery({
+    queryKey: eventsQueryKeys.all(filters?.mainCategoryId, filters?.subCategoryId),
+    queryFn: () => listEvents(filters),
+    enabled: ready,
+  });
 }
 
 export function useEvent(eventId: string) {
@@ -49,7 +54,10 @@ export function useCreateEvent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: EventCreateIn) => createEvent(payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: eventsQueryKeys.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+    },
   });
 }
 
@@ -59,7 +67,8 @@ export function useUpdateEvent(eventId: string) {
     mutationFn: (payload: EventUpdateIn) => updateEvent(eventId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: eventsQueryKeys.detail(eventId) });
-      queryClient.invalidateQueries({ queryKey: eventsQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 }
@@ -70,7 +79,8 @@ export function useChangeEventStatus(eventId: string) {
     mutationFn: (newStatus: EventStatus) => changeEventStatus(eventId, newStatus),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: eventsQueryKeys.detail(eventId) });
-      queryClient.invalidateQueries({ queryKey: eventsQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 }
@@ -81,7 +91,8 @@ export function usePublishEvent(eventId: string) {
     mutationFn: () => publishEvent(eventId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: eventsQueryKeys.detail(eventId) });
-      queryClient.invalidateQueries({ queryKey: eventsQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 }

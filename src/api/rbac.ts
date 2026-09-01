@@ -6,6 +6,11 @@ export async function listRoles(): Promise<RoleOut[]> {
   return data;
 }
 
+export async function listAssignableRoles(): Promise<RoleOut[]> {
+  const { data } = await apiClient.get<RoleOut[]>("/roles/assignable");
+  return data;
+}
+
 /** The endpoint added to close the "what roles do I hold" gap — see
  * backend §0 in the implementation plan. */
 export async function listMyRoleAssignments(): Promise<MyRoleAssignment[]> {

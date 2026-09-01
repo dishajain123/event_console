@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Plus, Search } from "lucide-react";
+import { CalendarDays, Layers3, Plus, Search } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { TableSkeleton } from "@/components/shared/skeleton";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { CreateEventDialog } from "@/components/events/create-event-dialog";
 import { useEvents } from "@/hooks/useEvents";
+import { useMainCategories, useSubCategories } from "@/hooks/useEventCategories";
 import { EVENT_STATUS_LABELS, type EventStatus } from "@/types/events";
 
 const STATUS_TONE: Record<EventStatus, "neutral" | "accent" | "success" | "warning" | "info"> = {
@@ -27,10 +28,19 @@ const STATUS_TONE: Record<EventStatus, "neutral" | "accent" | "success" | "warni
 };
 
 export default function EventsPage() {
-  const { data: events, isLoading, isError, refetch } = useEvents();
+  const { data: mainCategories } = useMainCategories();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<EventStatus | "all">("all");
+  const [mainCategoryFilter, setMainCategoryFilter] = useState<string>("all");
+  const [subCategoryFilter, setSubCategoryFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  const selectedMainCategoryId = mainCategoryFilter === "all" ? undefined : mainCategoryFilter;
+  const { data: subCategories } = useSubCategories(selectedMainCategoryId);
+  const { data: events, isLoading, isError, refetch } = useEvents({
+    mainCategoryId: selectedMainCategoryId,
+    subCategoryId: subCategoryFilter === "all" ? undefined : subCategoryFilter,
+  });
 
   const filtered = useMemo(() => {
     if (!events) return [];
@@ -38,11 +48,17 @@ export default function EventsPage() {
       const matchesSearch =
         !search ||
         e.name.toLowerCase().includes(search.toLowerCase()) ||
-        (e.category ?? "").toLowerCase().includes(search.toLowerCase());
+        (e.category ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        (e.main_category?.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        (e.sub_category?.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        (e.organizer?.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        (e.organizer?.mobile_number ?? "").toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === "all" || e.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesMain = mainCategoryFilter === "all" || e.main_category_id === mainCategoryFilter;
+      const matchesSub = subCategoryFilter === "all" || e.sub_category_id === subCategoryFilter;
+      return matchesSearch && matchesStatus && matchesMain && matchesSub;
     });
-  }, [events, search, statusFilter]);
+  }, [events, search, statusFilter, mainCategoryFilter, subCategoryFilter]);
 
   return (
     <div>
@@ -70,10 +86,44 @@ export default function EventsPage() {
             </option>
           ))}
         </Select>
+        <Select
+          className="w-52"
+          value={mainCategoryFilter}
+          onChange={(e) => {
+            setMainCategoryFilter(e.target.value);
+            setSubCategoryFilter("all");
+          }}
+        >
+          <option value="all">All main categories</option>
+          {mainCategories?.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </Select>
+        <Select
+          className="w-52"
+          value={subCategoryFilter}
+          onChange={(e) => setSubCategoryFilter(e.target.value)}
+          disabled={!selectedMainCategoryId}
+        >
+          <option value="all">{selectedMainCategoryId ? "All sub categories" : "Choose a main category"}</option>
+          {subCategories?.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </Select>
         <Button onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4" />
           New event
         </Button>
+        <Link href="/ops/categories">
+          <Button variant="outline">
+            <Layers3 className="h-4 w-4" />
+            Manage categories
+          </Button>
+        </Link>
       </div>
 
       <GlassPanel padded={false}>
@@ -104,6 +154,7 @@ export default function EventsPage() {
               <tr className="border-b border-black/[0.06] text-left text-xs text-[var(--foreground-muted)]">
                 <th className="px-6 py-3 font-medium">Event</th>
                 <th className="px-6 py-3 font-medium">Category</th>
+                <th className="px-6 py-3 font-medium">Organizer</th>
                 <th className="px-6 py-3 font-medium">Dates</th>
                 <th className="px-6 py-3 font-medium">Status</th>
               </tr>
@@ -119,7 +170,17 @@ export default function EventsPage() {
                       {event.name}
                     </Link>
                   </td>
-                  <td className="px-6 py-4 text-[var(--foreground-muted)]">{event.category || "—"}</td>
+                  <td className="px-6 py-4 text-[var(--foreground-muted)]">
+                    {event.main_category?.name || event.sub_category?.name || event.category || "—"}
+                    {event.main_category?.name && event.sub_category?.name && (
+                      <span className="ml-2 text-xs text-[var(--foreground-subtle)]">
+                        {event.main_category.name} / {event.sub_category.name}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-[var(--foreground-muted)]">
+                    {event.organizer?.name || event.organizer?.mobile_number || "—"}
+                  </td>
                   <td className="px-6 py-4 text-[var(--foreground-muted)]">
                     {new Date(event.start_date).toLocaleDateString(undefined, {
                       month: "short",

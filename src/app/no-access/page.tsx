@@ -16,9 +16,8 @@ export default function NoAccessPage() {
         </div>
         <h1 className="text-lg font-semibold text-[var(--foreground)]">No Console access on this account</h1>
         <p className="mt-2 text-sm text-[var(--foreground-muted)]">
-          This mobile number is verified, but it doesn&apos;t hold a Console role. Field roles (Event
-          Coordinator, Volunteer Head, Volunteer) work entirely from the mobile app. If this seems wrong,
-          ask an Operations Admin to check your account.
+          This mobile number is verified, but it doesn&apos;t hold a Console role. If this seems wrong,
+          ask an Operations Admin or Finance Admin to check your account.
         </p>
         <Button variant="outline" className="mt-6" onClick={logout}>
           Sign out

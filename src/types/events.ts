@@ -1,3 +1,7 @@
+import type { MainCategorySummary, SubCategorySummary } from "@/types/eventCategories";
+import type { EventConfigurationOut } from "@/types/configEngine";
+import type { UserOut } from "@/types/identity";
+
 /** Mirrors app/modules/events/schemas.py + models.py EventStatus. */
 
 export type EventStatus =
@@ -13,9 +17,16 @@ export type EventStatus =
 export interface EventOut {
   id: string;
   organization_id: string | null;
+  organizer_user_id: string | null;
   name: string;
   description: string | null;
   category: string | null;
+  main_category_id: string | null;
+  sub_category_id: string | null;
+  main_category: MainCategorySummary | null;
+  sub_category: SubCategorySummary | null;
+  organizer: UserOut | null;
+  configuration: EventConfigurationOut | null;
   start_date: string;
   end_date: string;
   status: EventStatus;
@@ -25,17 +36,23 @@ export interface EventCreateIn {
   name: string;
   description?: string | null;
   category?: string | null;
+  main_category_id?: string | null;
+  sub_category_id?: string | null;
   start_date: string;
   end_date: string;
   organization_id?: string | null;
+  organizer_user_id?: string | null;
 }
 
 export interface EventUpdateIn {
   name?: string;
   description?: string | null;
   category?: string | null;
+  main_category_id?: string | null;
+  sub_category_id?: string | null;
   start_date?: string;
   end_date?: string;
+  organizer_user_id?: string | null;
 }
 
 export interface VenueOut {
