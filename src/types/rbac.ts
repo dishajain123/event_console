@@ -1,0 +1,63 @@
+/** Mirrors app/modules/rbac/schemas.py and models.py exactly. */
+
+export const CONSOLE_ROLE_NAMES = [
+  "super_admin",
+  "operations_admin",
+  "finance_admin",
+  "finance_operator",
+  "finance_auditor",
+  "event_manager",
+] as const;
+
+/** Full backend role set — includes the mobile-only Staff Mode roles too,
+ * since role-assignment payloads can reference any of them. */
+export type RoleName =
+  | "super_admin"
+  | "operations_admin"
+  | "finance_admin"
+  | "finance_operator"
+  | "finance_auditor"
+  | "event_manager"
+  | "event_coordinator"
+  | "staff_lead"
+  | "staff_member";
+
+/** The subset of RoleName that ever grants a Console login. */
+export type ConsoleRoleName = (typeof CONSOLE_ROLE_NAMES)[number];
+
+/** Roles global admins (Super Admin) can provision directly via
+ * /users/find-or-create + /users/{id}/role-assignments. */
+export type ProvisionableGlobalRole =
+  | "operations_admin"
+  | "finance_admin"
+  | "finance_operator"
+  | "finance_auditor";
+
+export interface RoleOut {
+  id: string;
+  name: RoleName;
+  description: string | null;
+  is_scoped: boolean;
+}
+
+export interface RoleAssignmentOut {
+  id: string;
+  user_id: string;
+  role_id: string;
+  event_id: string | null;
+  status: "active" | "revoked";
+}
+
+export interface RoleAssignmentIn {
+  user_id: string;
+  role_name: RoleName;
+  event_id?: string | null;
+}
+
+/** Mirrors app/modules/rbac/schemas.py MyRoleAssignmentOut exactly —
+ * the resolved-name shape returned by GET /users/me/role-assignments. */
+export interface MyRoleAssignment {
+  role_name: RoleName;
+  event_id: string | null;
+  status: "active" | "revoked";
+}

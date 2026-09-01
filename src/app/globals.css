@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+:root {
+  /* Neutral base — soft, airy, mostly light */
+  --background: #f4f5fb;
+  --background-alt: #eef0fa;
+  --foreground: #1b1d29;
+  --foreground-muted: #6b7086;
+  --foreground-subtle: #9297ab;
+
+  /* Accent — refined indigo/violet, never deep magenta */
+  --accent: #6366f1;        /* indigo-500 */
+  --accent-strong: #4f46e5; /* indigo-600 */
+  --accent-soft: #eef0ff;
+  --accent-ring: rgba(99, 102, 241, 0.35);
+
+  /* Status colors */
+  --success: #16a34a;
+  --success-soft: #ecfdf3;
+  --warning: #d97706;
+  --warning-soft: #fffbeb;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --info: #0284c7;
+  --info-soft: #f0f9ff;
+
+  /* Glass surfaces */
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-shadow: 0 8px 32px rgba(31, 41, 76, 0.08);
+
+  /* Dark surface — reserved for the sidebar only */
+  --dark-surface: rgba(17, 19, 33, 0.92);
+  --dark-surface-border: rgba(255, 255, 255, 0.08);
+  --dark-foreground: #e7e8f5;
+  --dark-foreground-muted: #9b9fc2;
+
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+}
+
+* {
+  border-color: rgba(148, 152, 184, 0.16);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+  background:
+    radial-gradient(1100px 520px at 8% -8%, rgba(129, 140, 248, 0.16), transparent 60%),
+    radial-gradient(900px 480px at 108% 8%, rgba(56, 189, 248, 0.14), transparent 55%),
+    radial-gradient(800px 600px at 50% 115%, rgba(167, 139, 250, 0.12), transparent 60%),
+    linear-gradient(180deg, var(--background) 0%, var(--background-alt) 100%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Glass surface utilities ---- */
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--radius-lg);
+}
+
+.glass-panel-strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--radius-lg);
+}
+
+.glass-panel-dark {
+  background: var(--dark-surface);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid var(--dark-surface-border);
+  color: var(--dark-foreground);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(148, 152, 184, 0.28);
+  border-radius: var(--radius-sm);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.glass-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-ring);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* ---- Motion ---- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in {
+    animation: fadeIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .rise-in {
+    animation: riseIn 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom, unobtrusive scrollbar to keep the glass aesthetic consistent */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(107, 112, 134, 0.25);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 112, 134, 0.4);
+  background-clip: padding-box;
+}
+
