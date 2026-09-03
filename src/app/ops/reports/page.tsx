@@ -6,7 +6,7 @@ import { CalendarDays, Users, CheckSquare, TrendingUp } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { KPICard } from "@/components/reports/kpi-card";
-import { CardSkeleton, TableSkeleton } from "@/components/shared/skeleton";
+import { CardSkeleton } from "@/components/shared/skeleton";
 import { ErrorState, EmptyState } from "@/components/shared/states";
 import { usePlatformOperationsReport } from "@/hooks/useReports";
 import { REGISTRATION_STATUS_LABELS } from "@/types/registrations";

@@ -12,10 +12,11 @@ export function KPICard({
   label: string;
   value: string | number;
   icon: LucideIcon;
-  tone?: "accent" | "success" | "warning" | "info";
+  tone?: "neutral" | "accent" | "success" | "warning" | "info";
   hint?: string;
 }) {
   const toneClasses: Record<string, string> = {
+    neutral: "bg-slate-500/10 text-slate-600",
     accent: "bg-[var(--accent-soft)] text-[var(--accent-strong)]",
     success: "bg-[var(--success-soft)] text-[var(--success)]",
     warning: "bg-[var(--warning-soft)] text-[var(--warning)]",

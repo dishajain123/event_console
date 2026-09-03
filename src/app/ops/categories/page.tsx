@@ -69,11 +69,11 @@ export default function CategoriesPage() {
       if (editingMainCategory) {
         await updateMainCategory.mutateAsync({
           mainCategoryId: editingMainCategory.id,
-          payload,
+          payload: payload as MainCategoryUpdateIn,
         });
         toast.success("Main category updated");
       } else {
-        await createMainCategory.mutateAsync(payload);
+        await createMainCategory.mutateAsync(payload as MainCategoryCreateIn);
         toast.success("Main category created");
       }
       setMainDialogOpen(false);
@@ -90,11 +90,11 @@ export default function CategoriesPage() {
       if (editingSubCategory) {
         await updateSubCategory.mutateAsync({
           subCategoryId: editingSubCategory.id,
-          payload,
+          payload: payload as SubCategoryUpdateIn,
         });
         toast.success("Sub category updated");
       } else {
-        await createSubCategory.mutateAsync(payload);
+        await createSubCategory.mutateAsync(payload as SubCategoryCreateIn);
         toast.success("Sub category created");
       }
       setSubDialogOpen(false);

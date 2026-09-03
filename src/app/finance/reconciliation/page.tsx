@@ -31,6 +31,7 @@ function formatAmount(amount: string | number, currency: string) {
  */
 export default function ReconciliationPage() {
   const [eventFilter, setEventFilter] = useState<string>("all");
+  const [now] = useState(() => Date.now());
   const { data: events } = useEvents();
   const { data: payments, isLoading, isError, refetch } = usePayments(
     eventFilter === "all" ? undefined : eventFilter,
@@ -38,9 +39,9 @@ export default function ReconciliationPage() {
 
   const stuckInitiated = useMemo(() => {
     if (!payments) return [];
-    const cutoff = Date.now() - 30 * 60 * 1000; // older than 30 minutes
+    const cutoff = now - 30 * 60 * 1000; // older than 30 minutes
     return payments.filter((p) => p.status === "initiated" && new Date(p.created_at).getTime() < cutoff);
-  }, [payments]);
+  }, [payments, now]);
 
   const summary = useMemo(() => {
     if (!payments) return null;
