@@ -8,6 +8,7 @@ import {
   Layers3,
   ClipboardList,
   Users2,
+  UserRoundCheck,
   ShieldCheck,
   Image as ImageIcon,
   Handshake,
@@ -45,6 +46,8 @@ function useOpsNavItems(): NavItem[] {
     return [
       { label: "Configuration", href: `/ops/events/${eventId}/configure`, icon: ClipboardList },
       { label: "My Reports", href: `/ops/events/${eventId}/reports`, icon: BarChart3 },
+      { label: "Feedback", href: `/ops/events/${eventId}/feedback`, icon: MessageSquare },
+      { label: "Volunteers", href: "/ops/volunteers", icon: UserRoundCheck },
     ];
   }
 
@@ -61,8 +64,10 @@ function useOpsNavItems(): NavItem[] {
   items.push(
     { label: "Media", href: "/ops/content/media", icon: ImageIcon },
     { label: "Sponsors", href: "/ops/content/sponsors", icon: Handshake },
+    { label: "Volunteers", href: "/ops/volunteers", icon: UserRoundCheck },
     { label: "Communication", href: "/ops/communication", icon: MessageSquare },
     { label: "Reports", href: "/ops/reports", icon: BarChart3 },
+    { label: "Feedback", href: "/ops/feedback", icon: MessageSquare },
     { label: "Audit Log", href: "/ops/audit-log", icon: History },
   );
 

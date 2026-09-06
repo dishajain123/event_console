@@ -12,6 +12,7 @@ import {
   Users2,
   Radio,
   Building2,
+  MessageSquare,
 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
@@ -160,6 +161,12 @@ export default function EventDetailPage({
                 <Button variant="outline" className="w-full justify-start gap-2.5">
                   <BarChart3 className="h-4 w-4" />
                   Event Reports
+                </Button>
+              </Link>
+              <Link href={`/ops/events/${event.id}/feedback`}>
+                <Button variant="outline" className="w-full justify-start gap-2.5">
+                  <MessageSquare className="h-4 w-4" />
+                  Feedback
                 </Button>
               </Link>
             </GlassPanel>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,7 +16,12 @@ import { EmptyState, ErrorState } from "@/components/shared/states";
 import { TableSkeleton } from "@/components/shared/skeleton";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { useEvents } from "@/hooks/useEvents";
-import { useAddSponsor, useEventSponsors, useRemoveSponsor } from "@/hooks/useSponsors";
+import { useAddSponsor, useAllSponsors, useEventSponsors, useRemoveSponsor } from "@/hooks/useSponsors";
+import {
+  useAssignSponsorship,
+  useSponsorshipInquiries,
+  useUpdateSponsorshipInquiryStatus,
+} from "@/hooks/useSponsorships";
 import { COMMON_SPONSOR_TIERS } from "@/types/sponsors";
 import type { SponsorOut } from "@/types/sponsors";
 
@@ -31,9 +36,22 @@ export default function SponsorsPage() {
   const { data: events } = useEvents();
   const [eventId, setEventId] = useState("");
   const { data: sponsors, isLoading, isError, refetch } = useEventSponsors(eventId);
+  const { data: allSponsors } = useAllSponsors();
   const addSponsor = useAddSponsor(eventId);
   const removeSponsor = useRemoveSponsor(eventId);
   const [removeTarget, setRemoveTarget] = useState<SponsorOut | null>(null);
+  const { data: inquiries } = useSponsorshipInquiries(eventId || undefined);
+  const updateInquiry = useUpdateSponsorshipInquiryStatus();
+  const assignInquiry = useAssignSponsorship();
+  const [inquirySearch, setInquirySearch] = useState("");
+  const [inquiryStatus, setInquiryStatus] = useState("all");
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const visibleInquiries = useMemo(() => (inquiries ?? []).filter((inquiry) => {
+    const search = inquirySearch.trim().toLowerCase();
+    const matchesSearch = !search || [inquiry.company_name, inquiry.contact_person, inquiry.email]
+      .some((value) => value.toLowerCase().includes(search));
+    return matchesSearch && (inquiryStatus === "all" || inquiry.status === inquiryStatus);
+  }), [inquiries, inquirySearch, inquiryStatus]);
 
   const {
     register,
@@ -80,11 +98,22 @@ export default function SponsorsPage() {
 
       {!eventId ? (
         <GlassPanel>
-          <EmptyState
-            icon={Handshake}
-            title="Pick an event to manage its sponsors"
-            description="Sponsors added here appear on the event's public page, grouped by tier."
-          />
+          <h2 className="mb-4 text-sm font-semibold text-[var(--foreground)]">All confirmed sponsors</h2>
+          {!allSponsors || allSponsors.length === 0 ? (
+            <EmptyState icon={Handshake} title="No confirmed sponsors" />
+          ) : (
+            <div className="divide-y divide-black/[0.05]">
+              {allSponsors.map((sponsor) => (
+                <div key={sponsor.id} className="flex items-center justify-between py-3">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--foreground)]">{sponsor.name}</p>
+                    <p className="text-xs text-[var(--foreground-muted)]">Event: {sponsor.event_id}</p>
+                  </div>
+                  <Badge tone="accent" className="capitalize">{sponsor.status}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
         </GlassPanel>
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.4fr]">
@@ -194,6 +223,66 @@ export default function SponsorsPage() {
         tone="danger"
         onConfirm={handleRemove}
       />
+
+      <GlassPanel className="mt-8" padded={false}>
+        <div className="border-b border-black/[0.06] px-6 py-4">
+          <h2 className="text-sm font-semibold text-[var(--foreground)]">Sponsorship inquiries</h2>
+          <p className="mt-1 text-xs text-[var(--foreground-muted)]">
+            Results are scoped by the backend to Operations access or the selected managed event.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Input className="max-w-xs" placeholder="Search company, contact, email" value={inquirySearch} onChange={(event) => setInquirySearch(event.target.value)} />
+            <Select className="w-40" value={inquiryStatus} onChange={(event) => setInquiryStatus(event.target.value)}>
+              <option value="all">All statuses</option>
+              <option value="new">New</option>
+              <option value="reviewing">Reviewing</option>
+              <option value="approved">Approved</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="rejected">Rejected</option>
+              <option value="closed">Closed</option>
+            </Select>
+          </div>
+        </div>
+        {!visibleInquiries.length ? (
+          <div className="p-6"><EmptyState icon={Handshake} title="No sponsorship inquiries" /></div>
+        ) : (
+          <div className="divide-y divide-black/[0.05]">
+            {visibleInquiries.map((inquiry) => (
+              <div key={inquiry.id} className="flex flex-wrap items-center justify-between gap-4 p-4">
+                <div>
+                  <button type="button" className="text-left text-sm font-medium text-[var(--foreground)]" onClick={() => setDetailId(detailId === inquiry.id ? null : inquiry.id)}>{inquiry.company_name}</button>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    {inquiry.contact_person} · {inquiry.email} · {inquiry.event_ids.length} event(s)
+                  </p>
+                  <Badge tone="neutral" className="mt-1 capitalize">{inquiry.status}</Badge>
+                  {detailId === inquiry.id && (
+                    <p className="mt-2 max-w-xl text-xs text-[var(--foreground-muted)]">
+                      {inquiry.business_details || inquiry.message || "No additional details provided."}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {inquiry.status !== "confirmed" && inquiry.status !== "rejected" && (
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => updateInquiry.mutate({ inquiryId: inquiry.id, status: "approved" })}>
+                        Approve
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => updateInquiry.mutate({ inquiryId: inquiry.id, status: "rejected" })}>
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                  {eventId && inquiry.event_ids.includes(eventId) && inquiry.status === "approved" && (
+                    <Button size="sm" onClick={() => assignInquiry.mutate({ inquiryId: inquiry.id, payload: { event_id: eventId } })}>
+                      Confirm for event
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </GlassPanel>
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import { apiClient } from "@/api/client";
 import type { SponsorIn, SponsorOut } from "@/types/sponsors";
 
-export async function listSponsors(eventId: string): Promise<SponsorOut[]> {
-  const { data } = await apiClient.get<SponsorOut[]>(`/events/${eventId}/sponsors`);
+export async function listSponsors(eventId?: string): Promise<SponsorOut[]> {
+  const { data } = await apiClient.get<SponsorOut[]>("/sponsorship/sponsors", {
+    params: eventId ? { event_id: eventId } : undefined,
+  });
   return data;
 }
 

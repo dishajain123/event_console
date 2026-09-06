@@ -49,6 +49,11 @@ export interface EventConfigurationOut {
   fee_amount: string | number | null;
   currency: string;
   capacity: number | null;
+  volunteer_open: boolean;
+  registration_end_at: string | null;
+  registered_count: number;
+  available_capacity: number | null;
+  registration_status: "open" | "limited" | "full" | "closed";
   approval_required: boolean;
   details: EventDetailSettings;
   rules: Record<string, unknown>;
@@ -60,6 +65,8 @@ export interface EventConfigurationIn {
   fee_amount: number | null;
   currency: string;
   capacity: number | null;
+  volunteer_open: boolean;
+  registration_end_at?: string | null;
   approval_required: boolean;
   details: EventDetailSettings;
   rules: Record<string, unknown>;

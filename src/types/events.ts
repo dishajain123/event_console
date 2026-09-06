@@ -93,12 +93,26 @@ export interface SponsorOut {
   name: string;
   tier: string | null;
   logo_url: string | null;
+  status: "confirmed" | "active" | "inactive";
+  category: string | null;
+  description: string | null;
+  offer_details: string | null;
+  benefits: string[] | null;
+  website_url: string | null;
+  contact_email: string | null;
+  inquiry_id: string | null;
 }
 
 export interface SponsorIn {
   name: string;
   tier?: string | null;
   logo_url?: string | null;
+  category?: string | null;
+  description?: string | null;
+  offer_details?: string | null;
+  benefits?: string[];
+  website_url?: string | null;
+  contact_email?: string | null;
 }
 
 export interface EventStatusChangeIn {

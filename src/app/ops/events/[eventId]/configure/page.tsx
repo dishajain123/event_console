@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, Save, ShieldCheck } from "lucide-react";
@@ -34,6 +34,7 @@ const configSchema = z.object({
   currency: z.string().min(1),
   capacity: z.string().optional(),
   approvalRequired: z.boolean(),
+  volunteerOpen: z.boolean(),
 });
 type ConfigFormValues = z.infer<typeof configSchema>;
 
@@ -118,8 +119,9 @@ export default function ConfigurationBuilderPage({
     formState: { isDirty },
   } = useForm<ConfigFormValues>({
     resolver: zodResolver(configSchema),
-    defaultValues: { feeAmount: "", currency: "INR", capacity: "", approvalRequired: false },
+    defaultValues: { feeAmount: "", currency: "INR", capacity: "", approvalRequired: false, volunteerOpen: true },
   });
+  const configuredCapacity = useWatch({ control, name: "capacity" });
 
   // Hydrate local state once the configuration loads.
   useEffect(() => {
@@ -127,8 +129,14 @@ export default function ConfigurationBuilderPage({
     reset({
       feeAmount: configuration.fee_amount != null ? String(configuration.fee_amount) : "",
       currency: configuration.currency || "INR",
-      capacity: configuration.capacity != null ? String(configuration.capacity) : "",
+      capacity:
+        configuration.capacity != null
+          ? String(configuration.capacity)
+          : configuration.details?.maximum_participants != null
+            ? String(configuration.details.maximum_participants)
+            : "",
       approvalRequired: configuration.approval_required,
+      volunteerOpen: configuration.volunteer_open,
     });
     // The query resolves asynchronously; this hydrates the editable form state from backend data.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -137,6 +145,8 @@ export default function ConfigurationBuilderPage({
     setDetails({
       ...emptyDetails,
       ...configuration.details,
+      maximum_participants:
+        configuration.capacity ?? configuration.details?.maximum_participants ?? null,
       required_documents: configuration.details?.required_documents ?? [],
       custom_registration_questions: configuration.details?.custom_registration_questions ?? [],
     });
@@ -166,9 +176,12 @@ export default function ConfigurationBuilderPage({
         fee_amount: values.feeAmount ? Number(values.feeAmount) : null,
         currency: values.currency,
         capacity: values.capacity ? Number(values.capacity) : null,
+        registration_end_at: details.registration_end_at,
         approval_required: values.approvalRequired,
+        volunteer_open: values.volunteerOpen,
         details: {
           ...details,
+          maximum_participants: values.capacity ? Number(values.capacity) : null,
           registration_fee: values.feeAmount ? Number(values.feeAmount) : null,
         },
         rules,
@@ -357,10 +370,8 @@ export default function ConfigurationBuilderPage({
                 </label>
                 <Input
                   type="number"
-                  value={details.maximum_participants ?? ""}
-                  onChange={(e) =>
-                    setDetail("maximum_participants", e.target.value ? Number(e.target.value) : null)
-                  }
+                  value={configuredCapacity ? Number(configuredCapacity) : ""}
+                  readOnly
                 />
               </div>
             </div>
@@ -602,6 +613,18 @@ export default function ConfigurationBuilderPage({
                   onChange={field.onChange}
                   label="Require manual approval"
                   description="Registrations wait for a decision before payment/confirmation."
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="volunteerOpen"
+              render={({ field }) => (
+                <Switch
+                  checked={field.value}
+                  onChange={field.onChange}
+                  label="Accept volunteer applications"
+                  description="Show this event as an open volunteer opportunity in the mobile app."
                 />
               )}
             />
