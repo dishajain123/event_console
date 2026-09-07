@@ -1,0 +1,10 @@
+import { apiClient } from "@/api/client";
+import type { ConnectionStatus, NetworkingConfig, NetworkingConnection, NetworkingMetrics, NetworkingReport, Page, ParticipantProfile, ReportStatus } from "@/types/networking";
+export const getNetworkingConfig = async (eventId: string) => (await apiClient.get<NetworkingConfig | null>(`/networking/events/${eventId}/config`)).data;
+export const updateNetworkingConfig = async (eventId: string, payload: Pick<NetworkingConfig, "enabled" | "matchmaking_enabled" | "allowed_participant_types">) => (await apiClient.put<NetworkingConfig>(`/networking/events/${eventId}/config`, payload)).data;
+export const listNetworkingParticipants = async (eventId: string, page = 1, search?: string, organization?: string, designation?: string) => (await apiClient.get<Page<ParticipantProfile>>(`/networking/events/${eventId}/participants`, { params: { page, page_size: 25, search, organization, designation } })).data;
+export const listNetworkingConnections = async (eventId: string, page = 1, status?: ConnectionStatus, search?: string) => (await apiClient.get<Page<NetworkingConnection>>(`/networking/events/${eventId}/connections`, { params: { page, page_size: 25, status, search } })).data;
+export const listNetworkingReports = async (eventId: string, page = 1, status?: ReportStatus) => (await apiClient.get<Page<NetworkingReport>>(`/networking/events/${eventId}/reports`, { params: { page, page_size: 25, status } })).data;
+export const updateNetworkingReport = async (id: string, status: ReportStatus, resolution_notes?: string) => (await apiClient.post<NetworkingReport>(`/networking/reports/${id}/status`, { status, resolution_notes })).data;
+export const blockNetworkingParticipant = async (eventId: string, participantId: string) => (await apiClient.post(`/networking/events/${eventId}/participants/${participantId}/block`)).data;
+export const getNetworkingMetrics = async (eventId: string) => (await apiClient.get<NetworkingMetrics>(`/networking/events/${eventId}/metrics`)).data;

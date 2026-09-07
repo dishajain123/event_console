@@ -6,7 +6,7 @@ export interface SponsorOut {
   name: string;
   tier: string | null;
   logo_url: string | null;
-  status: "confirmed" | "active" | "inactive";
+  status: "confirmed" | "active" | "inactive" | "completed" | "cancelled";
   category: string | null;
   description: string | null;
   offer_details: string | null;

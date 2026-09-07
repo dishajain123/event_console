@@ -62,6 +62,9 @@ export interface VenueOut {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  capacity: number | null;
+  availability: { start_time: string; end_time: string }[];
+  is_shared: boolean;
 }
 
 export interface VenueIn {
@@ -69,6 +72,9 @@ export interface VenueIn {
   address?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  capacity?: number | null;
+  availability?: { start_time: string; end_time: string }[];
+  is_shared?: boolean;
 }
 
 export interface ScheduleItemOut {
@@ -78,6 +84,9 @@ export interface ScheduleItemOut {
   title: string;
   start_time: string;
   end_time: string | null;
+  resource_key: string | null;
+  expected_capacity: number | null;
+  status: "scheduled" | "cancelled" | "completed";
 }
 
 export interface ScheduleItemIn {
@@ -85,7 +94,11 @@ export interface ScheduleItemIn {
   title: string;
   start_time: string;
   end_time?: string | null;
+  resource_key?: string | null;
+  expected_capacity?: number | null;
 }
+
+export interface SchedulePage { items: ScheduleItemOut[]; total: number; page: number; page_size: number; }
 
 export interface SponsorOut {
   id: string;

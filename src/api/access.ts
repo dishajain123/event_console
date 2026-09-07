@@ -1,0 +1,12 @@
+import { apiClient } from "@/api/client";
+import type { AccessPolicy, AccessTicketPage, AccessZone, TicketTransferPage } from "@/types/access";
+export async function listAccessZones(eventId: string) { const { data } = await apiClient.get<AccessZone[]>(`/events/${eventId}/access/zones`); return data; }
+export async function createAccessZone(eventId: string, payload: { code: string; name: string }) { const { data } = await apiClient.post<AccessZone>(`/events/${eventId}/access/zones`, payload); return data; }
+export async function listAccessPolicies(eventId: string) { const { data } = await apiClient.get<AccessPolicy[]>(`/events/${eventId}/access/policies`); return data; }
+export async function upsertAccessPolicy(eventId: string, payload: Partial<AccessPolicy>) { const { data } = await apiClient.put<AccessPolicy>(`/events/${eventId}/access/policies`, payload); return data; }
+export async function listAccessTickets(eventId: string, filters: { status?: string; accessType?: string; search?: string; page?: number } = {}) { const { data } = await apiClient.get<AccessTicketPage>(`/events/${eventId}/access/tickets`, { params: { status: filters.status || undefined, access_type: filters.accessType || undefined, search: filters.search || undefined, page: filters.page ?? 1, page_size: 25 } }); return data; }
+export async function revokeAccessTicket(eventId: string, ticketId: string) { const { data } = await apiClient.post(`/events/${eventId}/access/tickets/${ticketId}/revoke`); return data; }
+export async function reassignAccessTicket(eventId: string, ticketId: string, userId: string) { const { data } = await apiClient.post(`/events/${eventId}/access/tickets/${ticketId}/reassign`, { user_id: userId }); return data; }
+export async function replaceAccessTicket(eventId: string, ticketId: string) { const { data } = await apiClient.post(`/events/${eventId}/access/tickets/${ticketId}/replace`); return data; }
+export async function listAccessTransfers(eventId: string, filters: { status?: string; search?: string; page?: number } = {}) { const { data } = await apiClient.get<TicketTransferPage>(`/events/${eventId}/access/transfers`, { params: { status: filters.status || undefined, search: filters.search || undefined, page: filters.page ?? 1, page_size: 25 } }); return data; }
+export async function cancelAccessTransfer(eventId: string, transferId: string) { const { data } = await apiClient.post(`/events/${eventId}/access/transfers/${transferId}/cancel`); return data; }

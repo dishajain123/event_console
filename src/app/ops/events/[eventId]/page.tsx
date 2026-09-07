@@ -1,7 +1,8 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Settings2,
@@ -9,6 +10,7 @@ import {
   CalendarDays,
   Layers3,
   ClipboardList,
+  ListOrdered,
   Users2,
   Radio,
   Building2,
@@ -18,11 +20,13 @@ import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CardSkeleton } from "@/components/shared/skeleton";
 import { ErrorState } from "@/components/shared/states";
 import { EventStatusStepper } from "@/components/events/event-status-stepper";
 import { VenuesPanel, SchedulePanel } from "@/components/events/venue-schedule-panels";
 import { useEvent } from "@/hooks/useEvents";
+import { useDuplicateEvent } from "@/hooks/useEventTemplates";
 import { EVENT_STATUS_LABELS, type EventStatus } from "@/types/events";
 
 function formatDateTime(value: string | null | undefined): string {
@@ -58,7 +62,10 @@ export default function EventDetailPage({
   params: Promise<{ eventId: string }>;
 }) {
   const { eventId } = use(params);
+  const router = useRouter();
   const { data: event, isLoading, isError, refetch } = useEvent(eventId);
+  const duplicate = useDuplicateEvent();
+  const [duplicateForm, setDuplicateForm] = useState({ name: "", start_date: "", end_date: "" });
 
   return (
     <div>
@@ -125,6 +132,16 @@ export default function EventDetailPage({
 
             <GlassPanel className="rise-in flex flex-col gap-3">
               <p className="text-sm font-semibold text-[var(--foreground)]">Manage this event</p>
+              <div className="rounded-[var(--radius-sm)] border border-[var(--accent)]/20 bg-[var(--accent-soft)] p-3">
+                <p className="mb-2 text-xs font-semibold text-[var(--foreground)]">Duplicate event</p>
+                <div className="space-y-2">
+                  <Input placeholder="New event name" value={duplicateForm.name} onChange={(input) => setDuplicateForm((value) => ({ ...value, name: input.target.value }))} />
+                  <Input type="datetime-local" value={duplicateForm.start_date} onChange={(input) => setDuplicateForm((value) => ({ ...value, start_date: input.target.value }))} />
+                  <Input type="datetime-local" value={duplicateForm.end_date} onChange={(input) => setDuplicateForm((value) => ({ ...value, end_date: input.target.value }))} />
+                  <Button className="w-full" loading={duplicate.isPending} disabled={!duplicateForm.name || !duplicateForm.start_date || !duplicateForm.end_date} onClick={async () => { const created = await duplicate.mutateAsync({ eventId, payload: { name: duplicateForm.name, start_date: new Date(duplicateForm.start_date).toISOString(), end_date: new Date(duplicateForm.end_date).toISOString() } }); router.push(`/ops/events/${created.id}`); }}>Duplicate event</Button>
+                </div>
+                <p className="mt-2 text-[11px] text-[var(--foreground-muted)]">Configuration is copied; registrations, payments, tickets, attendance, check-ins and history are not.</p>
+              </div>
               <div className="rounded-[var(--radius-sm)] border border-black/[0.05] bg-white/60 p-3 text-sm text-[var(--foreground-muted)]">
                 <div className="mb-2 flex items-center gap-2 text-[var(--foreground)]">
                   <Building2 className="h-4 w-4" />
@@ -139,16 +156,36 @@ export default function EventDetailPage({
                   Registrations
                 </Button>
               </Link>
+              <Link href={`/ops/events/${event.id}/waitlist`}>
+                <Button variant="outline" className="w-full justify-start gap-2.5">
+                  <ListOrdered className="h-4 w-4" />
+                  Waitlist
+                </Button>
+              </Link>
+              <Link href={`/ops/events/${event.id}/access`}>
+                <Button variant="outline">Ticket access</Button>
+              </Link>
               <Link href={`/ops/events/${event.id}/teams`}>
                 <Button variant="outline" className="w-full justify-start gap-2.5">
                   <Users2 className="h-4 w-4" />
                   Teams
                 </Button>
               </Link>
+              <Link href={`/ops/events/${event.id}/competitions`}>
+                <Button variant="outline" className="w-full justify-start gap-2.5">
+                  Competitions
+                </Button>
+              </Link>
               <Link href={`/ops/events/${event.id}/operations`}>
                 <Button variant="outline" className="w-full justify-start gap-2.5">
                   <Radio className="h-4 w-4" />
                   Day-of Operations
+                </Button>
+              </Link>
+              <Link href={`/ops/events/${event.id}/attendance`}>
+                <Button variant="outline" className="w-full justify-start gap-2.5">
+                  <BarChart3 className="h-4 w-4" />
+                  Attendance Analytics
                 </Button>
               </Link>
               <Link href={`/ops/events/${event.id}/configure`}>
@@ -161,6 +198,12 @@ export default function EventDetailPage({
                 <Button variant="outline" className="w-full justify-start gap-2.5">
                   <BarChart3 className="h-4 w-4" />
                   Event Reports
+                </Button>
+              </Link>
+              <Link href={`/ops/events/${event.id}/analytics`}>
+                <Button variant="outline" className="w-full justify-start gap-2.5">
+                  <BarChart3 className="h-4 w-4" />
+                  Advanced Analytics
                 </Button>
               </Link>
               <Link href={`/ops/events/${event.id}/feedback`}>

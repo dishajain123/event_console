@@ -5,11 +5,13 @@ import { usePathname } from "next/navigation";
 import {
   LayoutGrid,
   CalendarDays,
+  FileStack,
   Layers3,
   ClipboardList,
   Users2,
   UserRoundCheck,
   ShieldCheck,
+  ShieldAlert,
   Image as ImageIcon,
   Handshake,
   MessageSquare,
@@ -47,13 +49,18 @@ function useOpsNavItems(): NavItem[] {
       { label: "Configuration", href: `/ops/events/${eventId}/configure`, icon: ClipboardList },
       { label: "My Reports", href: `/ops/events/${eventId}/reports`, icon: BarChart3 },
       { label: "Feedback", href: `/ops/events/${eventId}/feedback`, icon: MessageSquare },
+      { label: "Interactions", href: `/ops/events/${eventId}/interactions`, icon: MessageSquare },
+      { label: "Networking", href: `/ops/events/${eventId}/networking`, icon: Users2 },
+      { label: "Incidents", href: `/ops/incidents?event_id=${eventId}`, icon: ShieldAlert },
       { label: "Volunteers", href: "/ops/volunteers", icon: UserRoundCheck },
+      { label: "Volunteer shifts", href: "/ops/volunteer-shifts", icon: CalendarDays },
     ];
   }
 
   const items: NavItem[] = [
     { label: "Dashboard", href: "/ops/dashboard", icon: LayoutGrid },
     { label: "Events", href: "/ops/events", icon: CalendarDays },
+    { label: "Templates", href: "/ops/event-templates", icon: FileStack },
     { label: "Categories", href: "/ops/categories", icon: Layers3 },
   ];
 
@@ -65,9 +72,11 @@ function useOpsNavItems(): NavItem[] {
     { label: "Media", href: "/ops/content/media", icon: ImageIcon },
     { label: "Sponsors", href: "/ops/content/sponsors", icon: Handshake },
     { label: "Volunteers", href: "/ops/volunteers", icon: UserRoundCheck },
+    { label: "Volunteer shifts", href: "/ops/volunteer-shifts", icon: CalendarDays },
     { label: "Communication", href: "/ops/communication", icon: MessageSquare },
     { label: "Reports", href: "/ops/reports", icon: BarChart3 },
     { label: "Feedback", href: "/ops/feedback", icon: MessageSquare },
+    { label: "Incidents", href: "/ops/incidents", icon: ShieldAlert },
     { label: "Audit Log", href: "/ops/audit-log", icon: History },
   );
 

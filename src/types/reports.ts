@@ -101,3 +101,98 @@ export interface EventSummaryReportOut {
   total_check_ins: number;
   revenue_collected: string | number;
 }
+
+export interface AttendanceAccessBreakdownOut { access_type: string; entries: number; unique_attendees: number; }
+export interface AttendanceTimeBucketOut { bucket: string; entries: number; }
+export interface EventAttendanceReportOut {
+  event_id: string; event_name: string; total_registrations: number; confirmed_registrations: number;
+  cancelled_registrations: number; refund_related_registrations: number; eligible_registrations: number;
+  active_tickets: number; valid_tickets: number; checked_in_participants: number; no_shows: number;
+  attendance_rate_pct: number | null; capacity: number | null; capacity_utilization_pct: number | null;
+  total_entries: number; reentry_count: number; first_check_in: string | null; last_check_in: string | null;
+  peak_entry_period: string | null; peak_entry_count: number;
+  by_access_type: AttendanceAccessBreakdownOut[]; checkins_over_time: AttendanceTimeBucketOut[];
+}
+
+export interface AnalyticsPointOut { date: string; count: number; }
+export interface EventAnalyticsOut {
+  event_id: string; event_name: string; registrations: Record<string, number>; capacity: Record<string, number | null>;
+  waitlist: Record<string, number>; tickets: Record<string, number>; attendance: Record<string, number>;
+  feedback: Record<string, number | null>; engagement: Record<string, number>; funnel: Record<string, number>;
+  breakdowns: Record<string, Record<string, number>>;
+  revenue?: Record<string, unknown>;
+}
+export interface EventAnalyticsTimeSeriesOut { event_id: string; start: string; end: string; registrations: AnalyticsPointOut[]; payments: AnalyticsPointOut[]; refunds: AnalyticsPointOut[]; check_ins: AnalyticsPointOut[]; feedback: AnalyticsPointOut[]; sponsor_engagements: AnalyticsPointOut[]; networking: AnalyticsPointOut[]; }
+export interface EventAnalyticsComparisonOut { event_id: string; start: string; end: string; previous_start: string; previous_end: string; registrations: { current: number; previous: number; change_pct: number | null }; attendance: { current: number; previous: number; change_pct: number | null }; engagement: { current: number; previous: number; change_pct: number | null }; revenue?: { current: number; previous: number; change_pct: number | null }; }
+export interface AttendanceParticipantOut {
+  registration_id: string; event_id: string; user_id: string; participant_name: string | null;
+  registration_status: string; access_type: string | null; attendance_status: "attended" | "no_show";
+  first_check_in: string | null; last_check_in: string | null; entry_count: number;
+}
+export interface AttendanceParticipantPageOut { items: AttendanceParticipantOut[]; total: number; page: number; page_size: number; }
+
+export interface OperationsAlertOut {
+  code: string;
+  severity: "info" | "warning" | "critical";
+  title: string;
+  event_id: string | null;
+  count: number;
+  target_path: string | null;
+}
+
+export interface OperationsEventSummaryOut {
+  event_id: string;
+  event_name: string;
+  event_status: string;
+  registration_status: string;
+  capacity: number | null;
+  capacity_used: number;
+  capacity_available: number | null;
+  capacity_utilization_pct: number | null;
+  registrations: Record<string, number>;
+  waitlist: Record<string, number>;
+  payments: Record<string, number>;
+  refunds: Record<string, number>;
+  tickets: Record<string, number>;
+  feedback_submitted: number;
+  failed_notifications: number;
+  reconciliation_attention: number;
+  open_incidents: number;
+  critical_incidents: number;
+  alerts: OperationsAlertOut[];
+}
+
+export interface OperationsTotalsOut {
+  registrations: Record<string, number>;
+  waitlist: Record<string, number>;
+  payments: Record<string, number>;
+  refunds: Record<string, number>;
+  tickets: Record<string, number>;
+  feedback_submitted: number;
+  failed_notifications: number;
+  reconciliation_attention: number;
+  open_incidents: number;
+  critical_incidents: number;
+}
+
+export interface OperationsIncidentSummaryOut {
+  id: string;
+  event_id: string;
+  title: string;
+  category: string;
+  status: string;
+  severity: string;
+  created_at: string;
+}
+
+export interface OperationsCommandCenterOut {
+  generated_at: string;
+  event_id: string | null;
+  items: OperationsEventSummaryOut[];
+  total: number;
+  page: number;
+  page_size: number;
+  totals: OperationsTotalsOut;
+  alerts: OperationsAlertOut[];
+  recent_incidents: OperationsIncidentSummaryOut[];
+}

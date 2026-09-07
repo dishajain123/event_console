@@ -6,6 +6,7 @@ import type {
   EventUpdateIn,
   ScheduleItemIn,
   ScheduleItemOut,
+  SchedulePage,
   SponsorIn,
   SponsorOut,
   VenueIn,
@@ -70,6 +71,11 @@ export async function listVenues(eventId: string): Promise<VenueOut[]> {
   return data;
 }
 
+export async function listAssignableVenues(eventId: string): Promise<VenueOut[]> {
+  const { data } = await apiClient.get<VenueOut[]>(`/events/${eventId}/venues/assignable`);
+  return data;
+}
+
 export async function createVenue(eventId: string, payload: VenueIn): Promise<VenueOut> {
   const { data } = await apiClient.post<VenueOut>(`/events/${eventId}/venues`, payload);
   return data;
@@ -85,6 +91,16 @@ export async function createScheduleItem(
   payload: ScheduleItemIn,
 ): Promise<ScheduleItemOut> {
   const { data } = await apiClient.post<ScheduleItemOut>(`/events/${eventId}/schedule`, payload);
+  return data;
+}
+
+export async function listManagedSchedule(eventId: string, filters: { page?: number; pageSize?: number; search?: string; status?: string } = {}): Promise<SchedulePage> {
+  const { data } = await apiClient.get<SchedulePage>(`/events/${eventId}/schedule/manage`, { params: { page: filters.page ?? 1, page_size: filters.pageSize ?? 25, search: filters.search || undefined, status: filters.status || undefined } });
+  return data;
+}
+
+export async function cancelScheduleItem(eventId: string, scheduleId: string): Promise<ScheduleItemOut> {
+  const { data } = await apiClient.post<ScheduleItemOut>(`/events/${eventId}/schedule/${scheduleId}/cancel`);
   return data;
 }
 

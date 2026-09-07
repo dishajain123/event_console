@@ -9,8 +9,11 @@ import {
   getEvent,
   listEvents,
   listSchedule,
+  listManagedSchedule,
+  cancelScheduleItem,
   listSponsors,
   listVenues,
+  listAssignableVenues,
   publishEvent,
   updateEvent,
 } from "@/api/events";
@@ -107,6 +110,11 @@ export function useVenues(eventId: string) {
   });
 }
 
+export function useAssignableVenues(eventId: string) {
+  const ready = useReady();
+  return useQuery({ queryKey: ["events", eventId, "assignable-venues"], queryFn: () => listAssignableVenues(eventId), enabled: ready && !!eventId });
+}
+
 export function useCreateVenue(eventId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -124,12 +132,22 @@ export function useSchedule(eventId: string) {
   });
 }
 
+export function useManagedSchedule(eventId: string, filters: { page?: number; search?: string; status?: string } = {}) {
+  const ready = useReady();
+  return useQuery({ queryKey: ["events", eventId, "schedule-manage", filters], queryFn: () => listManagedSchedule(eventId, { ...filters, pageSize: 25 }), enabled: ready && !!eventId });
+}
+
 export function useCreateScheduleItem(eventId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: ScheduleItemIn) => createScheduleItem(eventId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: eventsQueryKeys.schedule(eventId) }),
   });
+}
+
+export function useCancelScheduleItem(eventId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: (scheduleId: string) => cancelScheduleItem(eventId, scheduleId), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["events", eventId, "schedule-manage"] }) });
 }
 
 export function useSponsors(eventId: string) {

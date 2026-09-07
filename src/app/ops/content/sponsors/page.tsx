@@ -16,14 +16,22 @@ import { EmptyState, ErrorState } from "@/components/shared/states";
 import { TableSkeleton } from "@/components/shared/skeleton";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { useEvents } from "@/hooks/useEvents";
-import { useAddSponsor, useAllSponsors, useEventSponsors, useRemoveSponsor } from "@/hooks/useSponsors";
+import { useAddSponsor, useRemoveSponsor } from "@/hooks/useSponsors";
 import {
   useAssignSponsorship,
+  useManagedSponsors,
+  useSponsorDeliverables,
+  useSponsorshipMetrics,
   useSponsorshipInquiries,
+  useUpdateSponsorDeliverable,
   useUpdateSponsorshipInquiryStatus,
+  useSponsorEngagements,
+  useSponsorEngagementMetrics,
+  useUpdateSponsorEngagementConsent,
+  useUpdateSponsorEngagementStatus,
 } from "@/hooks/useSponsorships";
 import { COMMON_SPONSOR_TIERS } from "@/types/sponsors";
-import type { SponsorOut } from "@/types/sponsors";
+import type { ManagedSponsor, SponsorEngagementType, SponsorLeadStatus } from "@/types/sponsorships";
 
 const schema = z.object({
   name: z.string().min(1, "Sponsor name is required"),
@@ -35,11 +43,25 @@ type FormValues = z.infer<typeof schema>;
 export default function SponsorsPage() {
   const { data: events } = useEvents();
   const [eventId, setEventId] = useState("");
-  const { data: sponsors, isLoading, isError, refetch } = useEventSponsors(eventId);
-  const { data: allSponsors } = useAllSponsors();
+  const [sponsorSearch, setSponsorSearch] = useState("");
+  const [sponsorStatus, setSponsorStatus] = useState("all");
+  const [sponsorPage, setSponsorPage] = useState(1);
+  const { data: managedSponsors, isLoading, isError, refetch } = useManagedSponsors(eventId || undefined, sponsorSearch, sponsorStatus, sponsorPage);
   const addSponsor = useAddSponsor(eventId);
   const removeSponsor = useRemoveSponsor(eventId);
-  const [removeTarget, setRemoveTarget] = useState<SponsorOut | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<ManagedSponsor | null>(null);
+  const [selectedSponsorId, setSelectedSponsorId] = useState<string | undefined>();
+  const { data: metrics } = useSponsorshipMetrics(eventId || undefined);
+  const { data: deliverables } = useSponsorDeliverables(selectedSponsorId);
+  const [engagementPage, setEngagementPage] = useState(1);
+  const [engagementSearch, setEngagementSearch] = useState("");
+  const [engagementStatus, setEngagementStatus] = useState<string>("");
+  const [engagementType, setEngagementType] = useState<string>("");
+  const { data: engagementData, isLoading: engagementLoading, isError: engagementError } = useSponsorEngagements(eventId || undefined, selectedSponsorId, engagementPage, engagementSearch, engagementStatus ? engagementStatus as SponsorLeadStatus : undefined, engagementType ? engagementType as SponsorEngagementType : undefined);
+  const { data: engagementMetrics } = useSponsorEngagementMetrics(eventId || undefined, selectedSponsorId);
+  const updateEngagementStatus = useUpdateSponsorEngagementStatus();
+  const updateEngagementConsent = useUpdateSponsorEngagementConsent();
+  const updateDeliverable = useUpdateSponsorDeliverable();
   const [inquirySearch, setInquirySearch] = useState("");
   const [inquiryStatus, setInquiryStatus] = useState("all");
   const [inquiryPage, setInquiryPage] = useState(1);
@@ -48,6 +70,7 @@ export default function SponsorsPage() {
   const updateInquiry = useUpdateSponsorshipInquiryStatus();
   const assignInquiry = useAssignSponsorship();
   const visibleInquiries = inquiries ?? [];
+  const sponsors = managedSponsors?.items ?? [];
 
   const {
     register,
@@ -95,11 +118,11 @@ export default function SponsorsPage() {
       {!eventId ? (
         <GlassPanel>
           <h2 className="mb-4 text-sm font-semibold text-[var(--foreground)]">All confirmed sponsors</h2>
-          {!allSponsors || allSponsors.length === 0 ? (
+          {sponsors.length === 0 ? (
             <EmptyState icon={Handshake} title="No confirmed sponsors" />
           ) : (
             <div className="divide-y divide-black/[0.05]">
-              {allSponsors.map((sponsor) => (
+              {sponsors.map((sponsor) => (
                 <div key={sponsor.id} className="flex items-center justify-between py-3">
                   <div>
                     <p className="text-sm font-medium text-[var(--foreground)]">{sponsor.name}</p>
@@ -110,6 +133,10 @@ export default function SponsorsPage() {
               ))}
             </div>
           )}
+          <div className="flex items-center justify-between border-t border-black/[0.06] px-6 py-3 text-xs text-[var(--foreground-muted)]">
+            <span>Page {sponsorPage} of {Math.max(1, Math.ceil((managedSponsors?.total ?? 0) / 25))}</span>
+            <div className="flex gap-2"><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={sponsorPage === 1} onClick={() => setSponsorPage((value) => value - 1)}>Previous</button><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={sponsorPage >= Math.ceil((managedSponsors?.total ?? 0) / 25)} onClick={() => setSponsorPage((value) => value + 1)}>Next</button></div>
+          </div>
         </GlassPanel>
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.4fr]">
@@ -164,6 +191,7 @@ export default function SponsorsPage() {
           <GlassPanel padded={false}>
             <div className="border-b border-black/[0.06] px-6 py-4">
               <h2 className="text-sm font-semibold text-[var(--foreground)]">Sponsors</h2>
+              <div className="mt-3 flex flex-wrap gap-2"><Input className="max-w-xs" placeholder="Search sponsors" value={sponsorSearch} onChange={(event) => { setSponsorSearch(event.target.value); setSponsorPage(1); }} /><Select className="w-40" value={sponsorStatus} onChange={(event) => { setSponsorStatus(event.target.value); setSponsorPage(1); }}><option value="all">All statuses</option><option value="confirmed">Confirmed</option><option value="active">Active</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></Select></div>
             </div>
             {isLoading ? (
               <div className="p-6">
@@ -173,7 +201,7 @@ export default function SponsorsPage() {
               <div className="p-6">
                 <ErrorState onRetry={() => refetch()} description="Check the backend connection and try again." />
               </div>
-            ) : !sponsors || sponsors.length === 0 ? (
+            ) : sponsors.length === 0 ? (
               <div className="p-6">
                 <EmptyState icon={Handshake} title="No sponsors added yet" />
               </div>
@@ -191,7 +219,7 @@ export default function SponsorsPage() {
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-[var(--foreground)]">{sponsor.name}</p>
+                        <button type="button" className="text-left text-sm font-medium text-[var(--foreground)]" onClick={() => setSelectedSponsorId(selectedSponsorId === sponsor.id ? undefined : sponsor.id)}>{sponsor.name}</button>
                         {sponsor.tier && (
                           <Badge tone="accent" className="mt-0.5 capitalize">
                             {sponsor.tier}
@@ -199,16 +227,20 @@ export default function SponsorsPage() {
                         )}
                       </div>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={() => setRemoveTarget(sponsor)}>
+                    <div className="flex items-center gap-2"><Badge tone="neutral" className="capitalize">{sponsor.status}</Badge><Button size="sm" variant="ghost" onClick={() => setRemoveTarget(sponsor)}>
                       <Trash2 className="h-3.5 w-3.5 text-[var(--danger)]" />
-                    </Button>
+                    </Button></div>
                   </div>
                 ))}
               </div>
             )}
+            {selectedSponsorId && deliverables && <div className="border-t border-black/[0.06] p-4"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--foreground-muted)]">Deliverables</p>{deliverables.items.length === 0 ? <p className="text-xs text-[var(--foreground-muted)]">No deliverables recorded.</p> : <div className="space-y-2">{deliverables.items.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg bg-black/[0.03] p-3"><div><p className="text-sm text-[var(--foreground)]">{item.deliverable_type}: {item.description}</p><p className="text-xs text-[var(--foreground-muted)]">{item.due_date ? `Due ${new Date(item.due_date).toLocaleDateString()}` : "No due date"}</p></div><Select className="w-36" value={item.status} onChange={(event) => updateDeliverable.mutate({ deliverableId: item.id, status: event.target.value as "pending" | "in_progress" | "completed" | "cancelled" })}><option value="pending">Pending</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></Select></div>)}</div>}</div>}
+            {selectedSponsorId && eventId && <div className="border-t border-black/[0.06] p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--foreground-muted)]">Sponsor engagement</p>{engagementMetrics && <div className="flex gap-3 text-xs text-[var(--foreground-muted)]"><span>Leads {engagementMetrics.total_leads}</span><span>Converted {engagementMetrics.converted_leads}</span><span>Engaged {engagementMetrics.unique_participants_engaged}</span></div>}</div><div className="mb-3 flex flex-wrap gap-2"><Input className="max-w-xs" placeholder="Search opted-in participant" value={engagementSearch} onChange={(event) => { setEngagementSearch(event.target.value); setEngagementPage(1); }} /><Select className="w-40" value={engagementStatus} onChange={(event) => { setEngagementStatus(event.target.value); setEngagementPage(1); }}><option value="">All lead statuses</option><option value="captured">Captured</option><option value="qualified">Qualified</option><option value="contacted">Contacted</option><option value="converted">Converted</option><option value="dismissed">Dismissed</option><option value="unsubscribed">Unsubscribed</option></Select><Select className="w-44" value={engagementType} onChange={(event) => { setEngagementType(event.target.value); setEngagementPage(1); }}><option value="">All engagement types</option><option value="lead_capture">Lead capture</option><option value="booth_visit">Booth visit</option><option value="session_interest">Session interest</option><option value="sponsor_interaction">Sponsor interaction</option></Select></div>{engagementLoading ? <TableSkeleton rows={3} cols={3} /> : engagementError ? <p className="text-sm text-[var(--danger)]">Unable to load sponsor engagement.</p> : !engagementData?.items.length ? <p className="text-sm text-[var(--foreground-muted)]">No engagement records.</p> : <div className="space-y-2">{engagementData.items.map((item) => <div key={item.id} className="rounded-lg bg-black/[0.03] p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-medium">{item.participant_display_name ?? "Opted-in participant"}</p><p className="text-xs text-[var(--foreground-muted)]">{item.participant_organization ?? ""} {item.participant_designation ? `· ${item.participant_designation}` : ""} · {item.engagement_type.replaceAll("_", " ")}</p></div><Badge tone="neutral" className="capitalize">{item.lead_status}</Badge></div><div className="mt-2 flex flex-wrap gap-2">{item.lead_status === "captured" && <Button size="sm" variant="outline" onClick={() => updateEngagementStatus.mutate({ id: item.id, status: "qualified" }, { onError: () => toast.error("Unable to update lead") })}>Qualify</Button>}{item.lead_status === "qualified" && <Button size="sm" variant="outline" onClick={() => updateEngagementStatus.mutate({ id: item.id, status: "contacted" }, { onError: () => toast.error("Unable to update lead") })}>Mark contacted</Button>}{item.lead_status === "contacted" && <Button size="sm" variant="outline" onClick={() => updateEngagementStatus.mutate({ id: item.id, status: "converted" }, { onError: () => toast.error("Unable to update lead") })}>Mark converted</Button>}{["captured", "qualified", "contacted", "converted"].includes(item.lead_status) && <Button size="sm" variant="ghost" onClick={() => updateEngagementStatus.mutate({ id: item.id, status: "dismissed" }, { onError: () => toast.error("Unable to update lead") })}>Dismiss</Button>}{item.consent_status === "given" && <Button size="sm" variant="ghost" onClick={() => updateEngagementConsent.mutate({ id: item.id, consentGiven: false }, { onError: () => toast.error("Unable to withdraw consent") })}>Unsubscribe</Button>}</div></div>)}</div>}<div className="mt-3 flex items-center justify-between text-xs text-[var(--foreground-muted)]"><span>Page {engagementPage} of {Math.max(1, Math.ceil((engagementData?.total ?? 0) / 25))}</span><div className="flex gap-2"><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={engagementPage === 1} onClick={() => setEngagementPage((value) => value - 1)}>Previous</button><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={!engagementData || engagementPage >= Math.ceil(engagementData.total / 25)} onClick={() => setEngagementPage((value) => value + 1)}>Next</button></div></div></div>}
           </GlassPanel>
         </div>
       )}
+
+      {eventId && metrics && <GlassPanel className="mt-6"><div className="grid grid-cols-2 gap-4 md:grid-cols-5"><div><p className="text-xs text-[var(--foreground-muted)]">Sponsors</p><p className="text-xl font-semibold">{metrics.total_sponsors}</p></div><div><p className="text-xs text-[var(--foreground-muted)]">Committed</p><p className="text-xl font-semibold">{metrics.confirmed_value}</p></div><div><p className="text-xs text-[var(--foreground-muted)]">Deliverables</p><p className="text-xl font-semibold">{metrics.completed_deliverables}/{metrics.total_deliverables}</p></div><div><p className="text-xs text-[var(--foreground-muted)]">Overdue</p><p className="text-xl font-semibold text-[var(--danger)]">{metrics.overdue_deliverables}</p></div><div><p className="text-xs text-[var(--foreground-muted)]">Fulfillment</p><p className="text-xl font-semibold">{metrics.fulfillment_percentage ?? 0}%</p></div></div></GlassPanel>}
 
       <ConfirmActionDialog
         open={!!removeTarget}

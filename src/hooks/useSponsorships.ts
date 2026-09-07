@@ -7,8 +7,17 @@ import {
   listSponsorshipInquiries,
   listSponsorshipPackages,
   updateSponsorshipInquiryStatus,
+  getSponsorshipMetrics,
+  listManagedSponsors,
+  listSponsorDeliverables,
+  updateSponsorDeliverable,
+  updateSponsorStatus,
+  listSponsorEngagements,
+  updateSponsorEngagementStatus,
+  updateSponsorEngagementConsent,
+  getSponsorEngagementMetrics,
 } from "@/api/sponsorships";
-import type { SponsorshipInquiryCreate, SponsorshipInquiryStatus } from "@/types/sponsorships";
+import type { SponsorEngagementType, SponsorLeadStatus, SponsorshipDeliverableStatus, SponsorshipInquiryCreate, SponsorshipInquiryStatus } from "@/types/sponsorships";
 
 function useReady() {
   return useSessionStore((state) => state.hydrated && !!state.user);
@@ -56,4 +65,70 @@ export function useAssignSponsorship() {
       assignSponsorship(inquiryId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sponsorship", "inquiries"] }),
   });
+}
+
+export function useManagedSponsors(eventId?: string, search?: string, status?: string, page = 1) {
+  const ready = useReady();
+  return useQuery({
+    queryKey: ["sponsorship", "managed-sponsors", eventId ?? "all", search ?? "", status ?? "all", page],
+    queryFn: () => listManagedSponsors({ eventId, search, status, page, pageSize: 25 }),
+    enabled: ready,
+  });
+}
+
+export function useSponsorshipMetrics(eventId?: string) {
+  const ready = useReady();
+  return useQuery({
+    queryKey: ["sponsorship", "metrics", eventId],
+    queryFn: () => getSponsorshipMetrics(eventId as string),
+    enabled: ready && !!eventId,
+  });
+}
+
+export function useSponsorDeliverables(sponsorId?: string) {
+  const ready = useReady();
+  return useQuery({
+    queryKey: ["sponsorship", "deliverables", sponsorId],
+    queryFn: () => listSponsorDeliverables(sponsorId as string, undefined, 1),
+    enabled: ready && !!sponsorId,
+  });
+}
+
+export function useUpdateSponsorDeliverable() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ deliverableId, status, completionNotes }: { deliverableId: string; status: SponsorshipDeliverableStatus; completionNotes?: string }) => updateSponsorDeliverable(deliverableId, { status, completion_notes: completionNotes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsorship", "deliverables"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsorship", "managed-sponsors"] });
+    },
+  });
+}
+
+export function useUpdateSponsorStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sponsorId, status }: { sponsorId: string; status: string }) => updateSponsorStatus(sponsorId, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sponsorship"] }),
+  });
+}
+
+export function useSponsorEngagements(eventId?: string, sponsorId?: string, page = 1, search?: string, status?: SponsorLeadStatus, engagementType?: SponsorEngagementType) {
+  const ready = useReady();
+  return useQuery({ queryKey: ["sponsorship", "engagements", eventId, sponsorId, page, search ?? "", status ?? "all", engagementType ?? "all"], queryFn: () => listSponsorEngagements(eventId as string, sponsorId as string, { page, search, status, engagementType }), enabled: ready && !!eventId && !!sponsorId });
+}
+
+export function useSponsorEngagementMetrics(eventId?: string, sponsorId?: string) {
+  const ready = useReady();
+  return useQuery({ queryKey: ["sponsorship", "engagement-metrics", eventId, sponsorId], queryFn: () => getSponsorEngagementMetrics(eventId as string, sponsorId as string), enabled: ready && !!eventId && !!sponsorId });
+}
+
+export function useUpdateSponsorEngagementStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: ({ id, status }: { id: string; status: SponsorLeadStatus }) => updateSponsorEngagementStatus(id, status), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sponsorship", "engagements"] }) });
+}
+
+export function useUpdateSponsorEngagementConsent() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: ({ id, consentGiven, consentSource }: { id: string; consentGiven: boolean; consentSource?: string }) => updateSponsorEngagementConsent(id, consentGiven, consentSource), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sponsorship", "engagements"] }) });
 }

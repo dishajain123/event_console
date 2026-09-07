@@ -34,6 +34,7 @@ export function useAddSponsor(eventId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsors", "event", eventId] });
       queryClient.invalidateQueries({ queryKey: ["sponsors", "all"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsorship", "managed-sponsors"] });
     },
   });
 }
@@ -45,6 +46,7 @@ export function useRemoveSponsor(eventId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsors", "event", eventId] });
       queryClient.invalidateQueries({ queryKey: ["sponsors", "all"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsorship", "managed-sponsors"] });
     },
   });
 }
