@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Search, Receipt } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
@@ -22,23 +22,20 @@ export default function TransactionsPage() {
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | "all">("all");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
 
   const { data: events } = useEvents();
-  const { data: payments, isLoading, isError, refetch } = usePayments(
-    eventFilter === "all" ? undefined : eventFilter,
-  );
+  const { data: paymentPage, isLoading, isError, refetch } = usePayments({
+    eventId: eventFilter === "all" ? undefined : eventFilter,
+    page,
+    pageSize,
+    search,
+    status: statusFilter,
+  });
+  const payments = paymentPage?.items;
 
-  const filtered = useMemo(() => {
-    if (!payments) return [];
-    return payments.filter((p) => {
-      const matchesStatus = statusFilter === "all" || p.status === statusFilter;
-      const matchesSearch =
-        !search ||
-        p.gateway_order_id?.toLowerCase().includes(search.toLowerCase()) ||
-        p.gateway_payment_id?.toLowerCase().includes(search.toLowerCase());
-      return matchesStatus && matchesSearch;
-    });
-  }, [payments, statusFilter, search]);
+  const filtered = payments ?? [];
 
   const totalVerified = filtered
     .filter((p) => p.status === "verified")
@@ -55,10 +52,10 @@ export default function TransactionsPage() {
             placeholder="Search by gateway transaction ID…"
             className="pl-10"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setPage(1); setSearch(e.target.value); }}
           />
         </div>
-        <Select className="w-56" value={eventFilter} onChange={(e) => setEventFilter(e.target.value)}>
+        <Select className="w-56" value={eventFilter} onChange={(e) => { setPage(1); setEventFilter(e.target.value); }}>
           <option value="all">All events</option>
           {(events ?? []).map((event) => (
             <option key={event.id} value={event.id}>
@@ -69,7 +66,7 @@ export default function TransactionsPage() {
         <Select
           className="w-44"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as PaymentStatus | "all")}
+          onChange={(e) => { setPage(1); setStatusFilter(e.target.value as PaymentStatus | "all"); }}
         >
           <option value="all">All statuses</option>
           {Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => (
@@ -145,6 +142,12 @@ export default function TransactionsPage() {
           </table>
         )}
       </GlassPanel>
+      {(paymentPage?.total ?? 0) > pageSize && (
+        <div className="mt-4 flex justify-between text-sm text-[var(--foreground-muted)]">
+          <span>{paymentPage?.total ?? 0} total transactions</span>
+          <div className="flex gap-2"><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</button><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page * pageSize >= (paymentPage?.total ?? 0)} onClick={() => setPage((value) => value + 1)}>Next</button></div>
+        </div>
+      )}
     </div>
   );
 }

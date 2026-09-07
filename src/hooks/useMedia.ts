@@ -14,6 +14,7 @@ export function useEventMedia(eventId: string) {
   return useQuery({
     queryKey: ["media", "event", eventId],
     queryFn: () => listEventMedia(eventId),
+    select: (result) => result.items,
     enabled: ready && !!eventId,
   });
 }

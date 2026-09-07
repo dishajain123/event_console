@@ -34,8 +34,10 @@ function formatAmount(amount: string | number) {
 
 export default function RefundsPage() {
   const roles = useSessionStore((s) => s.roles);
-  const { data: refunds, isLoading, isError, refetch } = useRefunds();
-  const { data: payments } = usePayments();
+  const { data: refundPage, isLoading, isError, refetch } = useRefunds();
+  const { data: paymentPage } = usePayments();
+  const refunds = refundPage?.items;
+  const payments = paymentPage?.items;
   const requestRefund = useRequestRefund();
   const approveRefund = useApproveRefund();
 
@@ -113,9 +115,11 @@ export default function RefundsPage() {
             <thead>
               <tr className="border-b border-black/[0.06] text-left text-xs text-[var(--foreground-muted)]">
                 <th className="px-6 py-3 font-medium">Amount</th>
+                <th className="px-6 py-3 font-medium">Payment / gateway refund</th>
                 <th className="px-6 py-3 font-medium">Reason</th>
                 <th className="px-6 py-3 font-medium">Requested</th>
                 <th className="px-6 py-3 font-medium">Status</th>
+                <th className="px-6 py-3 font-medium">Reconciliation</th>
                 <th className="px-6 py-3 font-medium" />
               </tr>
             </thead>
@@ -123,6 +127,10 @@ export default function RefundsPage() {
               {refunds.map((refund) => (
                 <tr key={refund.id} className="transition-colors hover:bg-black/[0.02]">
                   <td className="px-6 py-4 font-medium text-[var(--foreground)]">{formatAmount(refund.amount)}</td>
+                  <td className="px-6 py-4 font-mono text-xs text-[var(--foreground-muted)]">
+                    <div>{refund.payment_id.slice(0, 12)}</div>
+                    <div>{refund.gateway_refund_id ?? "Provider ref pending"}</div>
+                  </td>
                   <td className="px-6 py-4 max-w-[280px] truncate text-[var(--foreground-muted)]">
                     {refund.reason || "—"}
                   </td>
@@ -131,6 +139,9 @@ export default function RefundsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <RefundStatusBadge status={refund.status} />
+                  </td>
+                  <td className="px-6 py-4 text-xs text-[var(--foreground-muted)]">
+                    {refund.reconciliation_error ?? `${refund.reconciliation_attempts} attempt(s)`}
                   </td>
                   <td className="px-6 py-4 text-right">
                     {refund.status === "pending_admin_approval" && canApproveRefund(roles) && (

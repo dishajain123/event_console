@@ -20,7 +20,8 @@ export default function VolunteersPage() {
   const [status, setStatus] = useState<VolunteerApplicationStatus | "">("");
   const [applicationType, setApplicationType] = useState<VolunteerApplicationType | "">("");
   const [search, setSearch] = useState("");
-  const applications = useVolunteerApplications({ event_id: eventId || undefined, status: status || undefined, search: search || undefined, application_type: applicationType || undefined });
+  const [page, setPage] = useState(1);
+  const applications = useVolunteerApplications({ event_id: eventId || undefined, status: status || undefined, search: search || undefined, application_type: applicationType || undefined, page, page_size: 25 });
   const updateStatus = useVolunteerStatusMutation();
   const activate = useActivateVolunteer();
 
@@ -76,6 +77,7 @@ export default function VolunteersPage() {
             ))}
           </div>
         )}
+        <div className="flex items-center justify-between border-t border-black/[0.06] px-6 py-3 text-xs text-[var(--foreground-muted)]"><span>Page {page}</span><div className="flex gap-2"><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</button><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={!applications.data || applications.data.length < 25} onClick={() => setPage((value) => value + 1)}>Next</button></div></div>
       </GlassPanel>
     </div>
   );

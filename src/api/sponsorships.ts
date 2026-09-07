@@ -6,6 +6,7 @@ import type {
   SponsorshipInquiryStatus,
   SponsorshipPackage,
 } from "@/types/sponsorships";
+export type SponsorshipInquiryPage = { items: SponsorshipInquiry[]; total: number; page: number; page_size: number };
 
 export async function listSponsorshipCategories(): Promise<SponsorshipCategory[]> {
   const { data } = await apiClient.get<SponsorshipCategory[]>("/sponsorship/categories");
@@ -17,9 +18,9 @@ export async function listSponsorshipPackages(): Promise<SponsorshipPackage[]> {
   return data;
 }
 
-export async function listSponsorshipInquiries(eventId?: string): Promise<SponsorshipInquiry[]> {
-  const { data } = await apiClient.get<SponsorshipInquiry[]>("/sponsorship/inquiries", {
-    params: eventId ? { event_id: eventId } : undefined,
+export async function listSponsorshipInquiries(eventId?: string, page = 1, pageSize = 25, search?: string, status?: string): Promise<SponsorshipInquiryPage> {
+  const { data } = await apiClient.get<SponsorshipInquiryPage>("/sponsorship/inquiries", {
+    params: { page, page_size: pageSize, ...(eventId ? { event_id: eventId } : {}), ...(search ? { search } : {}), ...(status && status !== "all" ? { status } : {}) },
   });
   return data;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -40,18 +40,14 @@ export default function SponsorsPage() {
   const addSponsor = useAddSponsor(eventId);
   const removeSponsor = useRemoveSponsor(eventId);
   const [removeTarget, setRemoveTarget] = useState<SponsorOut | null>(null);
-  const { data: inquiries } = useSponsorshipInquiries(eventId || undefined);
-  const updateInquiry = useUpdateSponsorshipInquiryStatus();
-  const assignInquiry = useAssignSponsorship();
   const [inquirySearch, setInquirySearch] = useState("");
   const [inquiryStatus, setInquiryStatus] = useState("all");
+  const [inquiryPage, setInquiryPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const visibleInquiries = useMemo(() => (inquiries ?? []).filter((inquiry) => {
-    const search = inquirySearch.trim().toLowerCase();
-    const matchesSearch = !search || [inquiry.company_name, inquiry.contact_person, inquiry.email]
-      .some((value) => value.toLowerCase().includes(search));
-    return matchesSearch && (inquiryStatus === "all" || inquiry.status === inquiryStatus);
-  }), [inquiries, inquirySearch, inquiryStatus]);
+  const { data: inquiries } = useSponsorshipInquiries(eventId || undefined, inquirySearch, inquiryStatus, inquiryPage);
+  const updateInquiry = useUpdateSponsorshipInquiryStatus();
+  const assignInquiry = useAssignSponsorship();
+  const visibleInquiries = inquiries ?? [];
 
   const {
     register,
@@ -282,6 +278,7 @@ export default function SponsorsPage() {
             ))}
           </div>
         )}
+        <div className="flex items-center justify-between border-t border-black/[0.06] px-6 py-3 text-xs text-[var(--foreground-muted)]"><span>Page {inquiryPage}</span><div className="flex gap-2"><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={inquiryPage === 1} onClick={() => setInquiryPage((value) => value - 1)}>Previous</button><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={!visibleInquiries || visibleInquiries.length < 25} onClick={() => setInquiryPage((value) => value + 1)}>Next</button></div></div>
       </GlassPanel>
     </div>
   );

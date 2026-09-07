@@ -22,28 +22,27 @@ export default function RegistrationsPage({
 }) {
   const { eventId } = use(params);
   const { data: event } = useEvent(eventId);
-  const { data: registrations, isLoading, isError, refetch } = useEventRegistrations(eventId);
-
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<RegistrationStatus | "all">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<RegistrationOut | null>(null);
+  const pageSize = 25;
+  const { data: registrationPage, isLoading, isError, refetch } = useEventRegistrations(eventId, {
+    page,
+    pageSize,
+    search,
+    status: statusFilter,
+    participationType: typeFilter,
+  });
+  const registrations = registrationPage?.items;
 
   const participationTypes = useMemo(
     () => Array.from(new Set((registrations ?? []).map((r) => r.participation_type))),
     [registrations],
   );
 
-  const filtered = useMemo(() => {
-    if (!registrations) return [];
-    return registrations.filter((r) => {
-      const matchesSearch =
-        !search || r.participants.some((p) => p.full_name.toLowerCase().includes(search.toLowerCase()));
-      const matchesStatus = statusFilter === "all" || r.status === statusFilter;
-      const matchesType = typeFilter === "all" || r.participation_type === typeFilter;
-      return matchesSearch && matchesStatus && matchesType;
-    });
-  }, [registrations, search, statusFilter, typeFilter]);
+  const filtered = registrations ?? [];
 
   const pendingCount = (registrations ?? []).filter(
     (r) => r.status === "submitted" || r.status === "pending_verification",
@@ -76,13 +75,13 @@ export default function RegistrationsPage({
             placeholder="Search by participant name…"
             className="pl-10"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setPage(1); setSearch(e.target.value); }}
           />
         </div>
         <Select
           className="w-56"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as RegistrationStatus | "all")}
+          onChange={(e) => { setPage(1); setStatusFilter(e.target.value as RegistrationStatus | "all"); }}
         >
           <option value="all">All statuses</option>
           {Object.entries(REGISTRATION_STATUS_LABELS).map(([value, label]) => (
@@ -92,7 +91,7 @@ export default function RegistrationsPage({
           ))}
         </Select>
         {participationTypes.length > 1 && (
-          <Select className="w-44" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <Select className="w-44" value={typeFilter} onChange={(e) => { setPage(1); setTypeFilter(e.target.value); }}>
             <option value="all">All types</option>
             {participationTypes.map((type) => (
               <option key={type} value={type} className="capitalize">
@@ -169,6 +168,16 @@ export default function RegistrationsPage({
           </table>
         )}
       </GlassPanel>
+
+      {(registrationPage?.total ?? 0) > pageSize && (
+        <div className="mt-4 flex items-center justify-between text-sm text-[var(--foreground-muted)]">
+          <span>{registrationPage?.total ?? 0} total registrations</span>
+          <div className="flex gap-2">
+            <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</button>
+            <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page * pageSize >= (registrationPage?.total ?? 0)} onClick={() => setPage((value) => value + 1)}>Next</button>
+          </div>
+        </div>
+      )}
 
       {selected && (
         <RegistrationDetailDrawer eventId={eventId} registration={selected} onClose={() => setSelected(null)} />

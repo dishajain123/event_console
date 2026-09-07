@@ -7,8 +7,10 @@ export function useVolunteerApplications(params: {
   status?: VolunteerApplicationStatus;
   search?: string;
   application_type?: VolunteerApplicationType;
+  page?: number;
+  page_size?: number;
 }) {
-  return useQuery({ queryKey: ["volunteers", params], queryFn: () => listVolunteerApplications(params) });
+  return useQuery({ queryKey: ["volunteers", params], queryFn: () => listVolunteerApplications(params), select: (result) => result.items });
 }
 
 export function useVolunteerStatusMutation() {

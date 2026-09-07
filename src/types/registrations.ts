@@ -5,6 +5,8 @@ export type RegistrationStatus =
   | "submitted"
   | "pending_verification"
   | "pending_payment"
+  | "refund_pending"
+  | "refund_failed"
   | "approved"
   | "confirmed"
   | "checked_in"
@@ -17,6 +19,8 @@ export const ACTIVE_REGISTRATION_STATUSES: RegistrationStatus[] = [
   "submitted",
   "pending_verification",
   "pending_payment",
+  "refund_pending",
+  "refund_failed",
   "approved",
   "confirmed",
   "checked_in",
@@ -33,6 +37,8 @@ export const REGISTRATION_STATUS_LABELS: Record<RegistrationStatus, string> = {
   submitted: "Submitted",
   pending_verification: "Pending Verification",
   pending_payment: "Pending Payment",
+  refund_pending: "Refund Pending",
+  refund_failed: "Refund Failed",
   approved: "Approved",
   confirmed: "Confirmed",
   checked_in: "Checked In",
@@ -67,4 +73,18 @@ export interface RegistrationOut {
   created_at: string;
   updated_at: string;
   participants: RegistrationParticipantOut[];
+  cancellation_deadline_at: string | null;
+  cancellation_requested_at: string | null;
+  cancelled_at: string | null;
+  cancelled_by: string | null;
+  cancellation_reason: string | null;
+  payment_status: "initiated" | "verified" | "failed" | "refunded" | null;
+  refund_status: "draft" | "pending_admin_approval" | "approved" | "rejected" | "processing" | "processed" | "failed" | null;
+}
+
+export interface RegistrationPage {
+  items: RegistrationOut[];
+  total: number;
+  page: number;
+  page_size: number;
 }

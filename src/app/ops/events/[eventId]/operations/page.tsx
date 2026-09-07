@@ -21,10 +21,12 @@ export default function EventOperationsPage({
   const { data: event } = useEvent(eventId);
   const { data: venues } = useVenues(eventId);
   const [venueFilter, setVenueFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
 
   const { data: checkIns, isLoading, isError, refetch, dataUpdatedAt } = useCheckIns(
     eventId,
     venueFilter === "all" ? undefined : venueFilter,
+    page,
   );
 
   const venueName = useMemo(() => {
@@ -128,6 +130,13 @@ export default function EventOperationsPage({
             </tbody>
           </table>
         )}
+        <div className="flex items-center justify-between border-t border-black/[0.06] px-6 py-3 text-xs text-[var(--foreground-muted)]">
+          <span>Page {page}</span>
+          <div className="flex gap-2">
+            <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</button>
+            <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={!checkIns || checkIns.length < 25} onClick={() => setPage((value) => value + 1)}>Next</button>
+          </div>
+        </div>
       </GlassPanel>
     </div>
   );

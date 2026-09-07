@@ -1,8 +1,9 @@
 import { apiClient } from "@/api/client";
 import type { MediaOut, MediaUploadIn } from "@/types/media";
 
-export async function listEventMedia(eventId: string): Promise<MediaOut[]> {
-  const { data } = await apiClient.get<MediaOut[]>(`/events/${eventId}/media`);
+export type MediaPage = { items: MediaOut[]; total: number; page: number; page_size: number };
+export async function listEventMedia(eventId: string): Promise<MediaPage> {
+  const { data } = await apiClient.get<MediaPage>(`/events/${eventId}/media`, { params: { page: 1, page_size: 25 } });
   return data;
 }
 

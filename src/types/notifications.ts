@@ -9,6 +9,15 @@ export const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannel, string> = 
 };
 
 export type NotificationDeliveryStatus = "queued" | "sent" | "failed";
+export type NotificationType =
+  | "operational"
+  | "event_reminder"
+  | "registration_confirmation"
+  | "payment_update"
+  | "cancellation_refund"
+  | "event_change"
+  | "feedback_reminder"
+  | "marketing";
 
 export interface NotificationTemplateOut {
   id: string;
@@ -20,6 +29,11 @@ export interface NotificationTemplateOut {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  notification_type: NotificationType | string;
+  dedupe_key: string | null;
+  attempt_count: number;
+  last_error: string | null;
+  delivered_at: string | null;
 }
 
 export interface NotificationSendTargetIn {
@@ -64,4 +78,5 @@ export interface GroupedSend {
   createdAt: string;
   recipientCount: number;
   deliveredCount: number;
+  failedCount: number;
 }

@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { X, User, Calendar, CheckCircle2, XCircle, Info } from "lucide-react";
+import { X, User, Calendar, CheckCircle2, XCircle, Info, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Button } from "@/components/ui/button";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { RegistrationStatusBadge } from "@/components/registrations/registration-status-badge";
-import { useApproveRegistration, useRejectRegistration } from "@/hooks/useRegistrations";
+import { useApproveRegistration, useCancelRegistration, useRejectRegistration } from "@/hooks/useRegistrations";
 import { DECIDABLE_REGISTRATION_STATUSES, type RegistrationOut } from "@/types/registrations";
 
 export function RegistrationDetailDrawer({
@@ -21,10 +21,13 @@ export function RegistrationDetailDrawer({
 }) {
   const approve = useApproveRegistration(eventId);
   const reject = useRejectRegistration(eventId);
+  const cancel = useCancelRegistration(eventId);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const canDecide = DECIDABLE_REGISTRATION_STATUSES.includes(registration.status);
+  const canCancel = ["started", "submitted", "pending_verification", "pending_payment", "approved", "confirmed", "refund_failed"].includes(registration.status);
 
   async function handleApprove() {
     await approve.mutateAsync(registration.id);
@@ -35,6 +38,14 @@ export function RegistrationDetailDrawer({
   async function handleReject(reason?: string) {
     await reject.mutateAsync({ registrationId: registration.id, reason: reason ?? "" });
     toast.success("Registration rejected");
+    onClose();
+  }
+
+  async function handleCancel(reason?: string) {
+    await cancel.mutateAsync({ registrationId: registration.id, reason });
+    toast.success("Cancellation submitted", {
+      description: "Paid registrations move to refund review before the ticket is cancelled.",
+    });
     onClose();
   }
 
@@ -66,6 +77,11 @@ export function RegistrationDetailDrawer({
               Status
             </p>
             <RegistrationStatusBadge status={registration.status} />
+            {registration.refund_status && (
+              <p className="mt-2 text-xs font-medium capitalize text-[var(--foreground-muted)]">
+                Refund: {registration.refund_status.replace(/_/g, " ")}
+              </p>
+            )}
             {registration.rejection_reason && (
               <p className="mt-2 rounded-[var(--radius-sm)] bg-[var(--danger-soft)] p-3 text-xs text-[var(--danger)]">
                 {registration.rejection_reason}
@@ -132,14 +148,20 @@ export function RegistrationDetailDrawer({
           </div>
         </div>
 
-        {canDecide && (
+        {(canDecide || canCancel) && (
           <div className="flex gap-2 border-t border-black/[0.06] px-6 py-4">
-            <Button variant="outline" className="flex-1" onClick={() => setRejectOpen(true)}>
-              Reject
-            </Button>
-            <Button className="flex-1" onClick={() => setApproveOpen(true)} loading={approve.isPending}>
-              Approve
-            </Button>
+            {canDecide && <>
+              <Button variant="outline" className="flex-1" onClick={() => setRejectOpen(true)}>
+                Reject
+              </Button>
+              <Button className="flex-1" onClick={() => setApproveOpen(true)} loading={approve.isPending}>
+                Approve
+              </Button>
+            </>}
+            {canCancel && <Button variant="outline" className="flex-1" onClick={() => setCancelOpen(true)} loading={cancel.isPending}>
+              <RotateCcw className="h-4 w-4" />
+              Cancel
+            </Button>}
           </div>
         )}
       </GlassPanel>
@@ -151,6 +173,18 @@ export function RegistrationDetailDrawer({
         description="This moves the registration forward — to payment, confirmation, or ticketing depending on this event's setup."
         confirmLabel="Approve registration"
         onConfirm={handleApprove}
+      />
+
+      <ConfirmActionDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        title="Cancel this registration?"
+        description="Paid registrations enter refund review. The ticket is cancelled only after a full refund succeeds."
+        confirmLabel="Cancel registration"
+        tone="danger"
+        requireReason
+        reasonLabel="Reason for cancellation"
+        onConfirm={handleCancel}
       />
 
       <ConfirmActionDialog

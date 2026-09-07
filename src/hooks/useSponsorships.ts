@@ -22,11 +22,12 @@ export function useSponsorshipPackages() {
   return useQuery({ queryKey: ["sponsorship", "packages"], queryFn: listSponsorshipPackages });
 }
 
-export function useSponsorshipInquiries(eventId?: string) {
+export function useSponsorshipInquiries(eventId?: string, search?: string, status?: string, page = 1) {
   const ready = useReady();
   return useQuery({
-    queryKey: ["sponsorship", "inquiries", eventId ?? "all"],
-    queryFn: () => listSponsorshipInquiries(eventId),
+    queryKey: ["sponsorship", "inquiries", eventId ?? "all", search ?? "", status ?? "all", page],
+    queryFn: () => listSponsorshipInquiries(eventId, page, 25, search, status),
+    select: (result) => result.items,
     enabled: ready,
   });
 }

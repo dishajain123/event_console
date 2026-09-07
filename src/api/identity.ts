@@ -53,8 +53,9 @@ export async function findOrCreateUserForProvisioning(
   return data;
 }
 
-export async function listAccounts(): Promise<AccountOut[]> {
-  const { data } = await apiClient.get<AccountOut[]>("/users/accounts");
+export type AccountPage = { items: AccountOut[]; total: number; page: number; page_size: number };
+export async function listAccounts(): Promise<AccountPage> {
+  const { data } = await apiClient.get<AccountPage>("/users/accounts", { params: { page: 1, page_size: 25 } });
   return data;
 }
 

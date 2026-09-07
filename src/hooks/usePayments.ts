@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { approveRefund, listPayments, listRefunds, requestRefund } from "@/api/payments";
+import { approveRefund, listPaymentWebhooks, listPayments, listRefunds, requestRefund } from "@/api/payments";
 import { useSessionStore } from "@/state/sessionStore";
 import type { RefundRequestIn } from "@/types/payments";
 
@@ -10,24 +10,34 @@ function useReady() {
 }
 
 export const paymentsQueryKeys = {
-  payments: (eventId?: string) => ["payments", eventId ?? "all"] as const,
-  refunds: (eventId?: string) => ["refunds", eventId ?? "all"] as const,
+  payments: (filters?: object) => ["payments", filters ?? "all"] as const,
+  refunds: (filters?: object) => ["refunds", filters ?? "all"] as const,
+  webhooks: ["payment-webhooks"] as const,
 };
 
-export function usePayments(eventId?: string) {
+export function usePayments(filters: { eventId?: string; page?: number; pageSize?: number; search?: string; status?: string } = {}) {
   const ready = useReady();
   return useQuery({
-    queryKey: paymentsQueryKeys.payments(eventId),
-    queryFn: () => listPayments(eventId),
+    queryKey: paymentsQueryKeys.payments(filters),
+    queryFn: () => listPayments(filters),
     enabled: ready,
   });
 }
 
-export function useRefunds(eventId?: string) {
+export function usePaymentWebhooks() {
   const ready = useReady();
   return useQuery({
-    queryKey: paymentsQueryKeys.refunds(eventId),
-    queryFn: () => listRefunds(eventId),
+    queryKey: paymentsQueryKeys.webhooks,
+    queryFn: () => listPaymentWebhooks(),
+    enabled: ready,
+  });
+}
+
+export function useRefunds(filters: { eventId?: string; page?: number; pageSize?: number; search?: string; status?: string } = {}) {
+  const ready = useReady();
+  return useQuery({
+    queryKey: paymentsQueryKeys.refunds(filters),
+    queryFn: () => listRefunds(filters),
     enabled: ready,
   });
 }

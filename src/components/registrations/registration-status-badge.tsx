@@ -6,6 +6,8 @@ const TONE: Record<RegistrationStatus, "neutral" | "accent" | "success" | "warni
   submitted: "info",
   pending_verification: "warning",
   pending_payment: "warning",
+  refund_pending: "warning",
+  refund_failed: "danger",
   approved: "accent",
   confirmed: "success",
   checked_in: "success",

@@ -6,8 +6,9 @@ import type {
   StaffAssignmentReassignIn,
 } from "@/types/staff";
 
-export async function listStaffAssignments(eventId: string): Promise<StaffAssignmentOut[]> {
-  const { data } = await apiClient.get<StaffAssignmentOut[]>(`/events/${eventId}/staff/assignments`);
+export type StaffAssignmentPage = { items: StaffAssignmentOut[]; total: number; page: number; page_size: number };
+export async function listStaffAssignments(eventId: string): Promise<StaffAssignmentPage> {
+  const { data } = await apiClient.get<StaffAssignmentPage>(`/events/${eventId}/staff/assignments`, { params: { page: 1, page_size: 25 } });
   return data;
 }
 

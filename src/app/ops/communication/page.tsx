@@ -30,8 +30,9 @@ type FormValues = z.infer<typeof schema>;
 export default function CommunicationPage() {
   const { data: events } = useEvents();
   const [eventId, setEventId] = useState("");
+  const [page, setPage] = useState(1);
   const sendNotification = useSendNotification(eventId);
-  const { data: sentNotifications, isLoading: sendsLoading, isError: sendsError, refetch: refetchSends } = useEventNotifications(eventId);
+  const { data: sentNotifications, isLoading: sendsLoading, isError: sendsError, refetch: refetchSends } = useEventNotifications(eventId, page);
 
   const {
     register,
@@ -161,6 +162,7 @@ export default function CommunicationPage() {
                       <span className="flex items-center gap-1">
                         <Users className="h-3 w-3" />
                         {send.deliveredCount}/{send.recipientCount} delivered
+                        {send.failedCount > 0 && ` · ${send.failedCount} failed`}
                       </span>
                       <span>{new Date(send.createdAt).toLocaleString()}</span>
                     </div>
@@ -168,6 +170,7 @@ export default function CommunicationPage() {
                 ))}
               </div>
             )}
+            {eventId && <div className="flex items-center justify-between border-t border-black/[0.06] px-6 py-3 text-xs text-[var(--foreground-muted)]"><span>Page {page}</span><div className="flex gap-2"><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</button><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={!sentNotifications || sentNotifications.length < 25} onClick={() => setPage((value) => value + 1)}>Next</button></div></div>}
           </GlassPanel>
         </div>
       )}

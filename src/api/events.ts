@@ -11,15 +11,24 @@ import type {
   VenueIn,
   VenueOut,
 } from "@/types/events";
+export type EventPage = { items: EventOut[]; total: number; page: number; page_size: number };
 
 export async function listEvents(filters?: {
   mainCategoryId?: string;
   subCategoryId?: string;
-}): Promise<EventOut[]> {
-  const { data } = await apiClient.get<EventOut[]>("/events", {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+}): Promise<EventPage> {
+  const { data } = await apiClient.get<EventPage>("/events", {
     params: {
       main_category_id: filters?.mainCategoryId,
       sub_category_id: filters?.subCategoryId,
+      page: filters?.page ?? 1,
+      page_size: filters?.pageSize ?? 25,
+      search: filters?.search,
+      status: filters?.status,
     },
   });
   return data;

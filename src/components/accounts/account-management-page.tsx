@@ -104,6 +104,7 @@ export function AccountManagementPage() {
   } = useQuery({
     queryKey: ["accounts"],
     queryFn: listAccounts,
+    select: (result) => result.items,
   });
 
   const defaultRole = roleOptions[0]?.name ?? "event_manager";

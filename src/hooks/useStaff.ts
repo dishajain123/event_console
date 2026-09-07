@@ -25,6 +25,7 @@ export function useStaffAssignments(eventId: string) {
   return useQuery({
     queryKey: staffQueryKeys.forEvent(eventId),
     queryFn: () => listStaffAssignments(eventId),
+    select: (result) => result.items,
     enabled: ready && !!eventId,
   });
 }

@@ -40,25 +40,14 @@ export default function EventsPage() {
   const { data: events, isLoading, isError, refetch } = useEvents({
     mainCategoryId: selectedMainCategoryId,
     subCategoryId: subCategoryFilter === "all" ? undefined : subCategoryFilter,
+    search,
+    status: statusFilter === "all" ? undefined : statusFilter,
   });
 
   const filtered = useMemo(() => {
     if (!events) return [];
-    return events.filter((e) => {
-      const matchesSearch =
-        !search ||
-        e.name.toLowerCase().includes(search.toLowerCase()) ||
-        (e.category ?? "").toLowerCase().includes(search.toLowerCase()) ||
-        (e.main_category?.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
-        (e.sub_category?.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
-        (e.organizer?.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
-        (e.organizer?.mobile_number ?? "").toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "all" || e.status === statusFilter;
-      const matchesMain = mainCategoryFilter === "all" || e.main_category_id === mainCategoryFilter;
-      const matchesSub = subCategoryFilter === "all" || e.sub_category_id === subCategoryFilter;
-      return matchesSearch && matchesStatus && matchesMain && matchesSub;
-    });
-  }, [events, search, statusFilter, mainCategoryFilter, subCategoryFilter]);
+    return events.filter((e) => mainCategoryFilter === "all" || e.main_category_id === mainCategoryFilter).filter((e) => subCategoryFilter === "all" || e.sub_category_id === subCategoryFilter);
+  }, [events, mainCategoryFilter, subCategoryFilter]);
 
   return (
     <div>

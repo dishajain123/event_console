@@ -18,8 +18,8 @@ import { useSessionStore } from "@/state/sessionStore";
 import type { EventCreateIn, EventStatus, EventUpdateIn, ScheduleItemIn, SponsorIn, VenueIn } from "@/types/events";
 
 export const eventsQueryKeys = {
-  all: (mainCategoryId?: string, subCategoryId?: string) =>
-    ["events", mainCategoryId ?? "all", subCategoryId ?? "all"] as const,
+  all: (mainCategoryId?: string, subCategoryId?: string, search?: string, status?: string, page?: number) =>
+    ["events", mainCategoryId ?? "all", subCategoryId ?? "all", search ?? "", status ?? "all", page ?? 1] as const,
   detail: (eventId: string) => ["events", eventId] as const,
   venues: (eventId: string) => ["events", eventId, "venues"] as const,
   schedule: (eventId: string) => ["events", eventId, "schedule"] as const,
@@ -32,11 +32,12 @@ function useReady() {
   return hydrated && !!user;
 }
 
-export function useEvents(filters?: { mainCategoryId?: string; subCategoryId?: string }) {
+export function useEvents(filters?: { mainCategoryId?: string; subCategoryId?: string; search?: string; status?: string; page?: number }) {
   const ready = useReady();
   return useQuery({
-    queryKey: eventsQueryKeys.all(filters?.mainCategoryId, filters?.subCategoryId),
+    queryKey: eventsQueryKeys.all(filters?.mainCategoryId, filters?.subCategoryId, filters?.search, filters?.status, filters?.page),
     queryFn: () => listEvents(filters),
+    select: (result) => result.items,
     enabled: ready,
   });
 }

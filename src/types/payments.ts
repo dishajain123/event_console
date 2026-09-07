@@ -26,6 +26,17 @@ export interface PaymentOut {
   captured_at: string | null;
   created_at: string;
   updated_at: string;
+  reconciliation_status: string;
+  reconciliation_attempts: number;
+  last_reconciled_at: string | null;
+  reconciliation_error: string | null;
+}
+
+export interface PaymentPage {
+  items: PaymentOut[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 export type RefundStatus =
@@ -53,11 +64,38 @@ export interface RefundOut {
   requested_by: string;
   amount: string | number;
   reason: string | null;
+  failure_reason: string | null;
   status: RefundStatus;
   approved_by: string | null;
   rejected_by: string | null;
   gateway_refund_id: string | null;
   approved_at: string | null;
+  processed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  reconciliation_attempts: number;
+  last_reconciled_at: string | null;
+  reconciliation_error: string | null;
+}
+
+export interface RefundPage {
+  items: RefundOut[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export type WebhookProcessingStatus = "received" | "processing" | "processed" | "failed";
+
+export interface PaymentWebhookInboxOut {
+  id: string;
+  provider_event_id: string;
+  provider: string;
+  event_type: string;
+  received_at: string;
+  processing_status: WebhookProcessingStatus;
+  attempts: number;
+  failure_reason: string | null;
   processed_at: string | null;
   created_at: string;
   updated_at: string;

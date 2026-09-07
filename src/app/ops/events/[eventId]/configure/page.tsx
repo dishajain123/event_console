@@ -62,6 +62,7 @@ const emptyDetails: EventDetailSettings = {
   rules_and_guidelines: null,
   terms_and_conditions: null,
   cancellation_policy: null,
+  cancellation_deadline_at: null,
   required_documents: [],
   contact_name: null,
   contact_email: null,
@@ -291,6 +292,19 @@ export default function ConfigurationBuilderPage({
                   value={toDateTimeLocal(details.event_end_at)}
                   onChange={(e) => setDetail("event_end_at", fromDateTimeLocal(e.target.value))}
                 />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                  Cancellation deadline
+                </label>
+                <Input
+                  type="datetime-local"
+                  value={toDateTimeLocal(details.cancellation_deadline_at)}
+                  onChange={(e) => setDetail("cancellation_deadline_at", fromDateTimeLocal(e.target.value))}
+                />
+                <p className="mt-1 text-xs text-[var(--foreground-muted)]">
+                  Participant cancellations after this time are rejected server-side.
+                </p>
               </div>
             </div>
 

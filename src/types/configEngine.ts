@@ -34,6 +34,7 @@ export interface EventDetailSettings {
   rules_and_guidelines: string | null;
   terms_and_conditions: string | null;
   cancellation_policy: string | null;
+  cancellation_deadline_at: string | null;
   required_documents: string[];
   contact_name: string | null;
   contact_email: string | null;

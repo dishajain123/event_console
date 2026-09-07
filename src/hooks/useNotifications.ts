@@ -9,11 +9,12 @@ function useReady() {
   return hydrated && !!user;
 }
 
-export function useEventNotifications(eventId: string) {
+export function useEventNotifications(eventId: string, page = 1) {
   const ready = useReady();
   return useQuery({
-    queryKey: ["notifications", "event", eventId],
-    queryFn: () => listNotificationsForEvent(eventId),
+    queryKey: ["notifications", "event", eventId, page],
+    queryFn: () => listNotificationsForEvent(eventId, page),
+    select: (result) => result.items,
     enabled: ready && !!eventId,
   });
 }
@@ -45,6 +46,7 @@ export function groupNotificationsIntoSends(notifications: NotificationOut[]): G
     if (existing) {
       existing.recipientCount += 1;
       if (n.delivery_status === "sent") existing.deliveredCount += 1;
+      if (n.delivery_status === "failed") existing.failedCount += 1;
     } else {
       groups.set(key, {
         key,
@@ -54,6 +56,7 @@ export function groupNotificationsIntoSends(notifications: NotificationOut[]): G
         createdAt: n.created_at,
         recipientCount: 1,
         deliveredCount: n.delivery_status === "sent" ? 1 : 0,
+        failedCount: n.delivery_status === "failed" ? 1 : 0,
       });
     }
   }

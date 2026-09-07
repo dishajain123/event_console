@@ -17,6 +17,7 @@ export function useEventTeams(eventId: string) {
   return useQuery({
     queryKey: teamsQueryKeys.forEvent(eventId),
     queryFn: () => listTeamsForEvent(eventId),
+    select: (result) => result.items,
     enabled: ready && !!eventId,
   });
 }

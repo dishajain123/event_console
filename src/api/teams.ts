@@ -1,8 +1,9 @@
 import { apiClient } from "@/api/client";
 import type { TeamOut } from "@/types/teams";
 
-export async function listTeamsForEvent(eventId: string): Promise<TeamOut[]> {
-  const { data } = await apiClient.get<TeamOut[]>("/teams", { params: { event_id: eventId } });
+export type TeamPage = { items: TeamOut[]; total: number; page: number; page_size: number };
+export async function listTeamsForEvent(eventId: string): Promise<TeamPage> {
+  const { data } = await apiClient.get<TeamPage>("/teams", { params: { event_id: eventId, page: 1, page_size: 25 } });
   return data;
 }
 
