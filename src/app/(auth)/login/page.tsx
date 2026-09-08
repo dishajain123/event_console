@@ -9,17 +9,25 @@ import { GlassPanel } from "@/components/ui/glass-panel";
 import { MobileNumberField } from "@/components/shared/mobile-number-field";
 import { useLogin } from "@/hooks/useAuth";
 import { getPostLoginRedirect } from "@/lib/rbac";
+import { requestPasswordReset, resetPassword } from "@/api/identity";
 import type { ApiError } from "@/api/client";
 import { formatIndianMobileDisplay, normalizeIndianMobileNumber } from "@/lib/phone";
 
 type Step = "mobile" | "otp";
+type Method = "mobile" | "email";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { requestOtp, verifyOtp } = useLogin();
+  const { requestOtp, verifyOtp, loginEmail } = useLogin();
 
   const [step, setStep] = useState<Step>("mobile");
   const [mobileNumber, setMobileNumber] = useState("");
+  const [method, setMethod] = useState<Method>("mobile");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [recovery, setRecovery] = useState(false);
+  const [recoverySent, setRecoverySent] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +39,23 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
+      if (method === "email") {
+        if (recovery) {
+          if (!recoverySent) {
+            await requestPasswordReset(email.trim().toLowerCase());
+            setRecoverySent(true);
+          } else {
+            await resetPassword(email.trim().toLowerCase(), recoveryCode, password);
+            setRecovery(false);
+            setRecoverySent(false);
+            setError(null);
+          }
+          return;
+        }
+        await loginEmail(email.trim().toLowerCase(), password);
+        router.replace("/");
+        return;
+      }
       const res = await requestOtp(normalizeIndianMobileNumber(mobileNumber));
       setStep("otp");
       setResendIn(res.resend_available_in_seconds);
@@ -101,18 +126,24 @@ export default function LoginPage() {
         <GlassPanel strong className="rise-in p-8">
           {step === "mobile" ? (
             <form onSubmit={handleRequestOtp} className="space-y-5">
-              <MobileNumberField
-                id="mobile"
-                label="Mobile number"
-                value={mobileNumber}
-                onChange={setMobileNumber}
-                autoFocus
-                error={!!error}
-                errorMessage={error}
-                placeholder="98765 43210"
-              />
-              <Button type="submit" className="w-full" loading={loading} disabled={loading || mobileNumber.length !== 10}>
-                Send code
+              <div className="grid grid-cols-2 gap-2 rounded-lg bg-black/5 p-1 text-sm">
+                <button type="button" className={`rounded-md px-3 py-2 ${method === "mobile" ? "bg-white shadow" : ""}`} onClick={() => { setMethod("mobile"); setError(null); }}>Mobile + OTP</button>
+                <button type="button" className={`rounded-md px-3 py-2 ${method === "email" ? "bg-white shadow" : ""}`} onClick={() => { setMethod("email"); setError(null); }}>Email + password</button>
+              </div>
+              {method === "mobile" ? <MobileNumberField
+                id="mobile" label="Mobile number" value={mobileNumber} onChange={setMobileNumber}
+                autoFocus error={!!error} errorMessage={error} placeholder="98765 43210"
+              /> : <>
+                <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <Input id="password" type="password" placeholder={recovery ? "New password" : "Password"} value={password} onChange={(e) => setPassword(e.target.value)} required={!recovery || recoverySent} />
+                {recovery && recoverySent && <Input id="recovery-code" placeholder="Email reset code" value={recoveryCode} onChange={(e) => setRecoveryCode(e.target.value)} required />}
+                {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+                <button type="button" className="text-left text-xs text-[var(--accent-strong)]" onClick={() => { setRecovery(!recovery); setRecoverySent(false); setError(null); }}>
+                  {recovery ? "Back to sign in" : "Forgot password?"}
+                </button>
+              </>}
+              <Button type="submit" className="w-full" loading={loading} disabled={loading || (method === "mobile" ? mobileNumber.length !== 10 : !email || (recoverySent ? !recoveryCode || password.length < 8 : recovery ? false : password.length < 8))}>
+                {method === "mobile" ? "Send code" : recovery ? (recoverySent ? "Reset password" : "Send reset code") : "Sign in"}
                 {!loading && <ArrowRight className="h-4 w-4" />}
               </Button>
               <p className="text-center text-xs text-[var(--foreground-subtle)]">

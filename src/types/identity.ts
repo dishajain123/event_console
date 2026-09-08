@@ -14,9 +14,10 @@ export interface TokenPairOut {
 
 export interface UserOut {
   id: string;
-  mobile_number: string;
+  mobile_number: string | null;
   name: string | null;
   email: string | null;
+  email_verified_at?: string | null;
   is_active: boolean;
 }
 
@@ -28,7 +29,7 @@ export interface AccountRoleOut {
 
 export interface AccountOut {
   id: string;
-  mobile_number: string;
+  mobile_number: string | null;
   name: string | null;
   email: string | null;
   is_active: boolean;

@@ -28,8 +28,29 @@ export async function verifyOtp(mobileNumber: string, otp: string): Promise<{ ac
   return res.json();
 }
 
-export async function logout(): Promise<void> {
-  await fetch("/api/auth/logout", { method: "POST" });
+export async function loginEmail(email: string, password: string): Promise<{ access_token: string }> {
+  const res = await fetch("/api/auth/email-login", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.message ?? "Invalid email or password.");
+  }
+  return res.json();
+}
+
+export async function requestPasswordReset(email: string): Promise<OTPRequestOut> {
+  const { data } = await apiClient.post<OTPRequestOut>("/auth/email/password-reset/request", { email });
+  return data;
+}
+
+export async function resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+  await apiClient.post("/auth/email/password-reset", { email, code, new_password: newPassword });
+}
+
+export async function logout(accessToken?: string): Promise<void> {
+  await fetch("/api/auth/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ access_token: accessToken }) });
 }
 
 export async function getMe(): Promise<UserOut> {

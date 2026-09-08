@@ -9,7 +9,9 @@ import type {
 } from "@/types/eventCategories";
 
 export async function listMainCategories(): Promise<MainCategoryOut[]> {
-  const { data } = await apiClient.get<MainCategoryOut[]>("/event-categories/main");
+  const { data } = await apiClient.get<MainCategoryOut[]>("/event-categories/main", {
+    params: { include_inactive: true },
+  });
   return data;
 }
 
@@ -35,7 +37,7 @@ export async function deleteMainCategory(mainCategoryId: string): Promise<void> 
 
 export async function listSubCategories(mainCategoryId?: string): Promise<SubCategoryOut[]> {
   const { data } = await apiClient.get<SubCategoryOut[]>("/event-categories/sub", {
-    params: mainCategoryId ? { main_category_id: mainCategoryId } : undefined,
+    params: { ...(mainCategoryId ? { main_category_id: mainCategoryId } : {}), include_inactive: true },
   });
   return data;
 }
@@ -59,4 +61,3 @@ export async function updateSubCategory(
 export async function deleteSubCategory(subCategoryId: string): Promise<void> {
   await apiClient.delete(`/event-categories/sub/${subCategoryId}`);
 }
-

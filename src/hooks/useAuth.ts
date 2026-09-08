@@ -3,7 +3,7 @@
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { getMe, requestOtp as apiRequestOtp, verifyOtp as apiVerifyOtp, logout as apiLogout } from "@/api/identity";
+import { getMe, requestOtp as apiRequestOtp, verifyOtp as apiVerifyOtp, loginEmail as apiLoginEmail, logout as apiLogout } from "@/api/identity";
 import { listMyRoleAssignments } from "@/api/rbac";
 import { useSessionStore } from "@/state/sessionStore";
 
@@ -81,18 +81,29 @@ export function useLogin() {
     [setAccessToken, setUser, setRoleAssignments, queryClient],
   );
 
-  return { requestOtp, verifyOtp };
+  const loginEmail = useCallback(async (email: string, password: string) => {
+    const { access_token } = await apiLoginEmail(email, password);
+    setAccessToken(access_token);
+    const [user, roleAssignments] = await Promise.all([getMe(), listMyRoleAssignments()]);
+    setUser(user);
+    setRoleAssignments(roleAssignments);
+    queryClient.clear();
+    return { user, roleAssignments };
+  }, [setAccessToken, setUser, setRoleAssignments, queryClient]);
+
+  return { requestOtp, verifyOtp, loginEmail };
 }
 
 export function useLogout() {
+  const accessToken = useSessionStore((s) => s.accessToken);
   const clearSession = useSessionStore((s) => s.clearSession);
   const queryClient = useQueryClient();
   const router = useRouter();
 
   return useCallback(async () => {
-    await apiLogout();
+    await apiLogout(accessToken ?? undefined);
     clearSession();
     queryClient.clear();
     router.replace("/login");
-  }, [clearSession, queryClient, router]);
+  }, [accessToken, clearSession, queryClient, router]);
 }

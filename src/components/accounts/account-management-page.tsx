@@ -167,7 +167,7 @@ export function AccountManagementPage() {
   const createEnabled = roleOptionsLoaded && !rolesLoading;
 
   const sortedAccounts = useMemo(
-    () => [...accounts].sort((a, b) => Number(b.is_active) - Number(a.is_active) || a.mobile_number.localeCompare(b.mobile_number)),
+    () => [...accounts].sort((a, b) => Number(b.is_active) - Number(a.is_active) || (a.mobile_number ?? a.email ?? a.id).localeCompare(b.mobile_number ?? b.email ?? b.id)),
     [accounts],
   );
 
@@ -295,7 +295,7 @@ export function AccountManagementPage() {
                     <tr key={account.id} className="transition-colors hover:bg-black/[0.02]">
                       <td className="px-6 py-4">
                         <p className="font-medium text-[var(--foreground)]">
-                          {account.name || formatIndianMobileDisplay(account.mobile_number)}
+                          {account.name || (account.mobile_number ? formatIndianMobileDisplay(account.mobile_number) : account.email)}
                         </p>
                         <p className="text-xs text-[var(--foreground-muted)]">{account.mobile_number}</p>
                       </td>

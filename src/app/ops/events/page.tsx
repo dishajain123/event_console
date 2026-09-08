@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Layers3, Plus, Search } from "lucide-react";
 import { Header } from "@/components/layout/header";
@@ -44,10 +44,9 @@ export default function EventsPage() {
     status: statusFilter === "all" ? undefined : statusFilter,
   });
 
-  const filtered = useMemo(() => {
-    if (!events) return [];
-    return events.filter((e) => mainCategoryFilter === "all" || e.main_category_id === mainCategoryFilter).filter((e) => subCategoryFilter === "all" || e.sub_category_id === subCategoryFilter);
-  }, [events, mainCategoryFilter, subCategoryFilter]);
+  // Category/status/search filters are sent to the backend. Do not apply a
+  // second client-side filter to a paginated response.
+  const filtered = events ?? [];
 
   return (
     <div>
