@@ -11,7 +11,7 @@ const ROLE_LABELS: Record<string, string> = {
   operations_admin: "Operations Admin",
   finance_admin: "Finance Admin",
   finance_operator: "Finance Operator",
-  finance_auditor: "Auditor",
+  finance_auditor: "Finance Auditor",
   event_manager: "Event Manager",
 };
 

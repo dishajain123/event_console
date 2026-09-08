@@ -40,66 +40,132 @@ interface NavItem {
   icon: typeof LayoutGrid;
 }
 
-function useOpsNavItems(): NavItem[] {
+interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
+function useOpsNavSections(): NavSection[] {
   const roles = useSessionStore((s) => s.roles);
 
   if (isScopedOnlyEventManager(roles)) {
     const eventId = roles.scopedEventManagerEventIds[0];
     return [
-      { label: "Configuration", href: `/ops/events/${eventId}/configure`, icon: ClipboardList },
-      { label: "My Reports", href: `/ops/events/${eventId}/reports`, icon: BarChart3 },
-      { label: "Feedback", href: `/ops/events/${eventId}/feedback`, icon: MessageSquare },
-      { label: "Interactions", href: `/ops/events/${eventId}/interactions`, icon: MessageSquare },
-      { label: "Networking", href: `/ops/events/${eventId}/networking`, icon: Users2 },
-      { label: "Incidents", href: `/ops/incidents?event_id=${eventId}`, icon: ShieldAlert },
-      { label: "Volunteers", href: "/ops/volunteers", icon: UserRoundCheck },
-      { label: "Volunteer shifts", href: "/ops/volunteer-shifts", icon: CalendarDays },
+      {
+        label: "Event Workspace",
+        items: [
+          { label: "Configuration", href: `/ops/events/${eventId}/configure`, icon: ClipboardList },
+          { label: "Registrations", href: `/ops/events/${eventId}/registrations`, icon: Users2 },
+          { label: "Tickets & Access", href: `/ops/events/${eventId}/access`, icon: ShieldCheck },
+          { label: "Check-in & Attendance", href: `/ops/events/${eventId}/attendance`, icon: UserRoundCheck },
+          { label: "Teams", href: `/ops/events/${eventId}/teams`, icon: Users2 },
+          { label: "Competitions", href: `/ops/events/${eventId}/competitions`, icon: CalendarDays },
+          { label: "Waitlist", href: `/ops/events/${eventId}/waitlist`, icon: ClipboardList },
+          { label: "Incidents", href: `/ops/incidents?event_id=${eventId}`, icon: ShieldAlert },
+          { label: "Reports", href: `/ops/events/${eventId}/reports`, icon: BarChart3 },
+          { label: "Analytics", href: `/ops/events/${eventId}/analytics`, icon: BarChart3 },
+          { label: "Feedback", href: `/ops/events/${eventId}/feedback`, icon: MessageSquare },
+          { label: "Networking", href: `/ops/events/${eventId}/networking`, icon: Users2 },
+        ],
+      },
+      {
+        label: "People & Staffing",
+        items: [
+          { label: "Volunteers", href: "/ops/volunteers", icon: UserRoundCheck },
+          { label: "Volunteer shifts", href: "/ops/volunteer-shifts", icon: CalendarDays },
+        ],
+      },
     ];
   }
 
-  const items: NavItem[] = [
-    { label: "Dashboard", href: "/ops/dashboard", icon: LayoutGrid },
-    { label: "Events", href: "/ops/events", icon: CalendarDays },
-    { label: "Templates", href: "/ops/event-templates", icon: FileStack },
-    { label: "Categories", href: "/ops/categories", icon: Layers3 },
+  const sections: NavSection[] = [
+    {
+      label: "Command Center",
+      items: [{ label: "Dashboard", href: "/ops/dashboard", icon: LayoutGrid }],
+    },
+    {
+      label: "Event Setup",
+      items: [
+        { label: "Categories", href: "/ops/categories", icon: Layers3 },
+        { label: "Events", href: "/ops/events", icon: CalendarDays },
+        { label: "Event Templates", href: "/ops/event-templates", icon: FileStack },
+      ],
+    },
+    {
+      label: "Event Operations",
+      items: [{ label: "Incidents", href: "/ops/incidents", icon: ShieldAlert }],
+    },
+    {
+      label: "People & Staffing",
+      items: [
+        { label: "Volunteers", href: "/ops/volunteers", icon: UserRoundCheck },
+        { label: "Volunteer shifts", href: "/ops/volunteer-shifts", icon: CalendarDays },
+      ],
+    },
+    {
+      label: "Content & Engagement",
+      items: [
+        { label: "Media", href: "/ops/content/media", icon: ImageIcon },
+        { label: "Sponsors", href: "/ops/content/sponsors", icon: Handshake },
+        { label: "Communication", href: "/ops/communication", icon: MessageSquare },
+        { label: "Feedback", href: "/ops/feedback", icon: MessageSquare },
+      ],
+    },
+    {
+      label: "Reports & Governance",
+      items: [
+        { label: "Reports", href: "/ops/reports", icon: BarChart3 },
+        { label: "Audit Log", href: "/ops/audit-log", icon: History },
+      ],
+    },
   ];
 
   if (canAccessAccountManagement(roles)) {
-    items.push({ label: "Accounts", href: "/ops/accounts", icon: Users2 });
+    sections.push({
+      label: "Administration",
+      items: [{ label: "Admin Accounts", href: "/ops/admin-accounts", icon: Users2 }],
+    });
   }
 
-  items.push(
-    { label: "Media", href: "/ops/content/media", icon: ImageIcon },
-    { label: "Sponsors", href: "/ops/content/sponsors", icon: Handshake },
-    { label: "Volunteers", href: "/ops/volunteers", icon: UserRoundCheck },
-    { label: "Volunteer shifts", href: "/ops/volunteer-shifts", icon: CalendarDays },
-    { label: "Communication", href: "/ops/communication", icon: MessageSquare },
-    { label: "Reports", href: "/ops/reports", icon: BarChart3 },
-    { label: "Feedback", href: "/ops/feedback", icon: MessageSquare },
-    { label: "Incidents", href: "/ops/incidents", icon: ShieldAlert },
-    { label: "Audit Log", href: "/ops/audit-log", icon: History },
-  );
-
-  return items;
+  return sections;
 }
 
-function useFinanceNavItems(): NavItem[] {
+function useFinanceNavSections(): NavSection[] {
   const roles = useSessionStore((s) => s.roles);
-  const items: NavItem[] = [{ label: "Dashboard", href: "/finance/dashboard", icon: Wallet }];
+  const sections: NavSection[] = [
+    {
+      label: "Finance Command Center",
+      items: [{ label: "Dashboard", href: "/finance/dashboard", icon: Wallet }],
+    },
+  ];
 
   if (canAccessFinanceConsole(roles)) {
-    items.push(
-      { label: "Transactions", href: "/finance/transactions", icon: Receipt },
-      { label: "Reconciliation", href: "/finance/reconciliation", icon: Scale },
-      { label: "Refunds", href: "/finance/refunds", icon: RotateCcw },
-      { label: "Reports", href: "/finance/reports", icon: BarChart3 },
-    );
+    sections.push({
+      label: "Financial Operations",
+      items: [
+        { label: "Transactions", href: "/finance/transactions", icon: Receipt },
+        { label: "Refunds", href: "/finance/refunds", icon: RotateCcw },
+        { label: "Reconciliation", href: "/finance/reconciliation", icon: Scale },
+      ],
+    });
   }
 
   if (canAccessAccountManagement(roles)) {
-    items.splice(1, 0, { label: "Accounts", href: "/finance/accounts", icon: Users2 });
+    sections.push({
+      label: "Financial Reporting",
+      items: [{ label: "Financial Reports", href: "/finance/reports", icon: BarChart3 }],
+    });
+    sections.push({
+      label: "Finance Administration",
+      items: [{ label: "Finance Accounts", href: "/finance/accounts", icon: Users2 }],
+    });
+  } else if (canAccessFinanceConsole(roles)) {
+    sections.push({
+      label: "Financial Reporting",
+      items: [{ label: "Financial Reports", href: "/finance/reports", icon: BarChart3 }],
+    });
   }
-  return items;
+  return sections;
 }
 
 export function Sidebar({ area }: { area: "ops" | "finance" }) {
@@ -108,9 +174,9 @@ export function Sidebar({ area }: { area: "ops" | "finance" }) {
   const toggleCollapsed = useUiStore((s) => s.toggleSidebarCollapsed);
   const roles = useSessionStore((s) => s.roles);
 
-  const opsItems = useOpsNavItems();
-  const financeItems = useFinanceNavItems();
-  const items = area === "ops" ? opsItems : financeItems;
+  const opsSections = useOpsNavSections();
+  const financeSections = useFinanceNavSections();
+  const sections = area === "ops" ? opsSections : financeSections;
   const canSwitch = area === "ops" ? canAccessFinanceConsole(roles) : isOperationsAdmin(roles);
   const scopedOnly = isScopedOnlyEventManager(roles);
 
@@ -135,30 +201,41 @@ export function Sidebar({ area }: { area: "ops" | "finance" }) {
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
-        {items.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "group flex items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-white/10 text-white"
-                  : "text-[var(--dark-foreground-muted)] hover:bg-white/[0.06] hover:text-white",
-              )}
-              title={collapsed ? item.label : undefined}
-            >
-              <Icon className={cn("h-[18px] w-[18px] shrink-0", active && "text-[var(--accent)]")} />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-              {active && !collapsed && (
-                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-              )}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-3">
+        {sections.map((section) => (
+          <div key={section.label}>
+            {!collapsed && (
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--dark-foreground-subtle)]">
+                {section.label}
+              </p>
+            )}
+            <div className="space-y-1">
+              {section.items.map((item) => {
+                const active = pathname === item.href || pathname.startsWith(item.href + "/");
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "group flex items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-white/10 text-white"
+                        : "text-[var(--dark-foreground-muted)] hover:bg-white/[0.06] hover:text-white",
+                    )}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <Icon className={cn("h-[18px] w-[18px] shrink-0", active && "text-[var(--accent)]")} />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                    {active && !collapsed && (
+                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {!scopedOnly && canSwitch && (

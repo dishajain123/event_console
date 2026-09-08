@@ -47,7 +47,7 @@ function roleLabel(roleName: string): string {
     case "finance_operator":
       return "Finance Operator";
     case "finance_auditor":
-      return "Auditor";
+      return "Finance Auditor";
     case "event_manager":
       return "Event Manager";
     default:
