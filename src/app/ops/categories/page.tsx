@@ -387,8 +387,8 @@ export default function CategoriesPage() {
         title={deleteTarget?.kind === "main" ? "Delete main category?" : "Delete sub category?"}
         description={
           deleteTarget?.kind === "main"
-            ? "This is blocked if sub categories or events still use it."
-            : "This is blocked if events still use this sub category."
+            ? "This will logically delete this main category, all its subcategories, and all events under them. They will disappear from the console and mobile app. Registration and payment history will be retained."
+            : "This will logically delete this subcategory and all its events. They will disappear from the console and mobile app. Registration and payment history will be retained."
         }
         confirmLabel="Delete"
         tone="danger"
