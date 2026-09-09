@@ -75,8 +75,20 @@ export async function findOrCreateUserForProvisioning(
 }
 
 export type AccountPage = { items: AccountOut[]; total: number; page: number; page_size: number };
-export async function listAccounts(): Promise<AccountPage> {
-  const { data } = await apiClient.get<AccountPage>("/users/accounts", { params: { page: 1, page_size: 25 } });
+/**
+ * Same endpoint and the same two query params as before
+ * (`page`/`page_size`) — nothing about the request contract changed.
+ * What changed: the page size is now a parameter (defaulting to 100,
+ * up from a hardcoded 25) so the Account Management screen's search
+ * and role filter have more than one page's worth of accounts to work
+ * against without the console silently truncating the list. `page` is
+ * exposed too, wired to a real Pagination control for the rare case an
+ * organization has more than 100 admin/staff accounts.
+ */
+export async function listAccounts(params?: { page?: number; pageSize?: number }): Promise<AccountPage> {
+  const { data } = await apiClient.get<AccountPage>("/users/accounts", {
+    params: { page: params?.page ?? 1, page_size: params?.pageSize ?? 100 },
+  });
   return data;
 }
 

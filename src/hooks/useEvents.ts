@@ -23,6 +23,8 @@ import type { EventCreateIn, EventStatus, EventUpdateIn, ScheduleItemIn, Sponsor
 export const eventsQueryKeys = {
   all: (mainCategoryId?: string, subCategoryId?: string, search?: string, status?: string, page?: number) =>
     ["events", mainCategoryId ?? "all", subCategoryId ?? "all", search ?? "", status ?? "all", page ?? 1] as const,
+  page: (mainCategoryId?: string, subCategoryId?: string, search?: string, status?: string, page?: number, pageSize?: number) =>
+    ["events", "page", mainCategoryId ?? "all", subCategoryId ?? "all", search ?? "", status ?? "all", page ?? 1, pageSize ?? 25] as const,
   detail: (eventId: string) => ["events", eventId] as const,
   venues: (eventId: string) => ["events", eventId, "venues"] as const,
   schedule: (eventId: string) => ["events", eventId, "schedule"] as const,
@@ -41,6 +43,38 @@ export function useEvents(filters?: { mainCategoryId?: string; subCategoryId?: s
     queryKey: eventsQueryKeys.all(filters?.mainCategoryId, filters?.subCategoryId, filters?.search, filters?.status, filters?.page),
     queryFn: () => listEvents(filters),
     select: (result) => result.items,
+    enabled: ready,
+  });
+}
+
+/**
+ * Additive — same `listEvents` API call as [useEvents], with the same
+ * params, but returns the full paginated `EventPage` (items/total/
+ * page/page_size) instead of discarding everything but `items`. Added
+ * so the Events page can drive a real [Pagination] control from data
+ * the backend was already returning; [useEvents] is untouched and
+ * every one of its existing call sites (which expect a plain array)
+ * keeps working exactly as before.
+ */
+export function useEventsPage(filters?: {
+  mainCategoryId?: string;
+  subCategoryId?: string;
+  search?: string;
+  status?: string;
+  page?: number;
+  pageSize?: number;
+}) {
+  const ready = useReady();
+  return useQuery({
+    queryKey: eventsQueryKeys.page(
+      filters?.mainCategoryId,
+      filters?.subCategoryId,
+      filters?.search,
+      filters?.status,
+      filters?.page,
+      filters?.pageSize,
+    ),
+    queryFn: () => listEvents(filters),
     enabled: ready,
   });
 }
