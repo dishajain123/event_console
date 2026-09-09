@@ -1,197 +1,227 @@
 "use client";
 
-import { useState } from "react";
+import { use } from "react";
 import Link from "next/link";
-import { CalendarDays, Layers3, Plus, Search } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TableSkeleton } from "@/components/shared/skeleton";
-import { EmptyState, ErrorState } from "@/components/shared/states";
-import { CreateEventDialog } from "@/components/events/create-event-dialog";
-import { useEvents } from "@/hooks/useEvents";
-import { useMainCategories, useSubCategories } from "@/hooks/useEventCategories";
-import { EVENT_STATUS_LABELS, type EventStatus } from "@/types/events";
+import { Pagination } from "@/components/ui/pagination";
+import { ErrorState } from "@/components/shared/states";
+import { useNetworking } from "@/hooks/useNetworking";
+import type { ConnectionStatus } from "@/types/networking";
 
-const STATUS_TONE: Record<EventStatus, "neutral" | "accent" | "success" | "warning" | "info"> = {
-  draft: "neutral",
-  configured: "info",
-  published: "accent",
-  registration_open: "success",
-  registration_closed: "warning",
-  live: "success",
-  completed: "neutral",
-  archived: "neutral",
-};
+/** Same `useNetworking` hook, its state, and its mutation payloads as before. */
+export default function NetworkingPage({ params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = use(params);
+  const {
+    config,
+    participants,
+    connections,
+    reports,
+    metrics,
+    saveConfig,
+    updateReport,
+    block,
+    participantPage,
+    setParticipantPage,
+    participantSearch,
+    setParticipantSearch,
+    participantOrganization,
+    setParticipantOrganization,
+    participantDesignation,
+    setParticipantDesignation,
+    connectionPage,
+    setConnectionPage,
+    connectionStatus,
+    setConnectionStatus,
+    connectionSearch,
+    setConnectionSearch,
+  } = useNetworking(eventId);
 
-export default function EventsPage() {
-  const { data: mainCategories } = useMainCategories();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<EventStatus | "all">("all");
-  const [mainCategoryFilter, setMainCategoryFilter] = useState<string>("all");
-  const [subCategoryFilter, setSubCategoryFilter] = useState<string>("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  if (config.isLoading || participants.isLoading || connections.isLoading || reports.isLoading || metrics.isLoading) {
+    return <p className="p-5 text-sm text-[var(--foreground-muted)]">Loading networking…</p>;
+  }
+  if (config.isError || participants.isError || connections.isError || reports.isError || metrics.isError) {
+    return (
+      <div className="p-5">
+        <ErrorState title="Unable to load networking" />
+      </div>
+    );
+  }
 
-  const selectedMainCategoryId = mainCategoryFilter === "all" ? undefined : mainCategoryFilter;
-  const { data: subCategories } = useSubCategories(selectedMainCategoryId);
-  const { data: events, isLoading, isError, refetch } = useEvents({
-    mainCategoryId: selectedMainCategoryId,
-    subCategoryId: subCategoryFilter === "all" ? undefined : subCategoryFilter,
-    search,
-    status: statusFilter === "all" ? undefined : statusFilter,
-  });
-
-  // Category/status/search filters are sent to the backend. Do not apply a
-  // second client-side filter to a paginated response.
-  const filtered = events ?? [];
+  const current = config.data ?? { enabled: false, matchmaking_enabled: true, allowed_participant_types: null };
 
   return (
     <div>
-      <Header title="Events" />
+      <Link
+        href={`/ops/events/${eventId}`}
+        className="mb-4 flex items-center gap-1.5 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to event
+      </Link>
+      <Header title="Participant Networking" />
+      <p className="mb-4 -mt-2 text-sm text-[var(--foreground-muted)]">Event-scoped privacy, matchmaking, connections, and reports.</p>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[220px] flex-1">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--foreground-subtle)]" />
-          <Input
-            placeholder="Search by name or category…"
-            className="pl-10"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+      {metrics.data && (
+        <div className="mb-4 flex flex-wrap gap-3">
+          {Object.entries(metrics.data).map(([key, value]) => (
+            <GlassPanel key={key} padded={false} className="min-w-[120px] p-3.5">
+              <p className="text-xs uppercase tracking-wide text-[var(--foreground-subtle)]">{key.replaceAll("_", " ")}</p>
+              <p className="mt-0.5 text-xl font-semibold text-[var(--foreground)]">{value}</p>
+            </GlassPanel>
+          ))}
+        </div>
+      )}
+
+      <GlassPanel className="mb-4">
+        <h2 className="mb-3.5 text-sm font-semibold text-[var(--foreground)]">Configuration</h2>
+        <div className="flex flex-wrap gap-6">
+          <Switch
+            checked={current.enabled}
+            onChange={(checked) => saveConfig.mutate({ ...current, enabled: checked })}
+            label="Enable networking"
+          />
+          <Switch
+            checked={current.matchmaking_enabled}
+            onChange={(checked) => saveConfig.mutate({ ...current, matchmaking_enabled: checked })}
+            label="Enable matchmaking"
           />
         </div>
-        <Select
-          className="w-52"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as EventStatus | "all")}
-        >
-          <option value="all">All statuses</option>
-          {Object.entries(EVENT_STATUS_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </Select>
-        <Select
-          className="w-52"
-          value={mainCategoryFilter}
-          onChange={(e) => {
-            setMainCategoryFilter(e.target.value);
-            setSubCategoryFilter("all");
-          }}
-        >
-          <option value="all">All main categories</option>
-          {mainCategories?.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </Select>
-        <Select
-          className="w-52"
-          value={subCategoryFilter}
-          onChange={(e) => setSubCategoryFilter(e.target.value)}
-          disabled={!selectedMainCategoryId}
-        >
-          <option value="all">{selectedMainCategoryId ? "All sub categories" : "Choose a main category"}</option>
-          {subCategories?.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </Select>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          New event
-        </Button>
-        <Link href="/ops/categories">
-          <Button variant="outline">
-            <Layers3 className="h-4 w-4" />
-            Manage categories
-          </Button>
-        </Link>
-      </div>
-
-      <GlassPanel padded={false}>
-        {isLoading ? (
-          <div className="p-6">
-            <TableSkeleton rows={5} cols={4} />
-          </div>
-        ) : isError ? (
-          <div className="p-6">
-            <ErrorState onRetry={() => refetch()} description="Check the backend connection and try again." />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="p-6">
-            <EmptyState
-              icon={CalendarDays}
-              title={events && events.length > 0 ? "No events match your filters" : "No events yet"}
-              description={
-                events && events.length > 0
-                  ? "Try a different search term or status filter."
-                  : "Create your first event to start configuring it."
-              }
-              action={events && events.length === 0 ? { label: "Create event", onClick: () => setDialogOpen(true) } : undefined}
-            />
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-black/[0.06] text-left text-xs text-[var(--foreground-muted)]">
-                <th className="px-6 py-3 font-medium">Event</th>
-                <th className="px-6 py-3 font-medium">Category</th>
-                <th className="px-6 py-3 font-medium">Organizer</th>
-                <th className="px-6 py-3 font-medium">Dates</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/[0.05]">
-              {filtered.map((event) => (
-                <tr key={event.id} className="transition-colors hover:bg-black/[0.02]">
-                  <td className="px-6 py-4">
-                    <Link
-                      href={`/ops/events/${event.id}`}
-                      className="font-medium text-[var(--foreground)] hover:text-[var(--accent-strong)]"
-                    >
-                      {event.name}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 text-[var(--foreground-muted)]">
-                    {event.main_category?.name || event.sub_category?.name || event.category || "—"}
-                    {event.main_category?.name && event.sub_category?.name && (
-                      <span className="ml-2 text-xs text-[var(--foreground-subtle)]">
-                        {event.main_category.name} / {event.sub_category.name}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-[var(--foreground-muted)]">
-                    {event.organizer?.name || event.organizer?.mobile_number || "—"}
-                  </td>
-                  <td className="px-6 py-4 text-[var(--foreground-muted)]">
-                    {new Date(event.start_date).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                    {" – "}
-                    {new Date(event.end_date).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge tone={STATUS_TONE[event.status]}>{EVENT_STATUS_LABELS[event.status]}</Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
       </GlassPanel>
 
-      <CreateEventDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+      <GlassPanel className="mb-4">
+        <h2 className="mb-3.5 text-sm font-semibold text-[var(--foreground)]">Discoverable participants</h2>
+        <div className="mb-3.5 flex flex-wrap gap-2">
+          <Input
+            className="max-w-xs"
+            value={participantSearch}
+            onChange={(e) => {
+              setParticipantSearch(e.target.value);
+              setParticipantPage(1);
+            }}
+            placeholder="Search participants"
+          />
+          <Input
+            className="max-w-[200px]"
+            value={participantOrganization}
+            onChange={(e) => {
+              setParticipantOrganization(e.target.value);
+              setParticipantPage(1);
+            }}
+            placeholder="Organization"
+          />
+          <Input
+            className="max-w-[200px]"
+            value={participantDesignation}
+            onChange={(e) => {
+              setParticipantDesignation(e.target.value);
+              setParticipantPage(1);
+            }}
+            placeholder="Designation"
+          />
+        </div>
+        {participants.data?.items.length ? (
+          <div className="space-y-2">
+            {participants.data.items.map((person) => (
+              <div key={person.id} className="rounded-[var(--radius-sm)] border border-[var(--border)] p-3">
+                <p className="text-sm font-medium text-[var(--foreground)]">{person.display_name ?? "Unnamed participant"}</p>
+                <p className="text-xs text-[var(--foreground-muted)]">
+                  {person.organization ?? ""} {person.designation ? `· ${person.designation}` : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--foreground-muted)]">No opted-in participants.</p>
+        )}
+        <Pagination
+          page={participantPage}
+          totalPages={Math.max(1, Math.ceil((participants.data?.total ?? 0) / 25))}
+          totalItems={participants.data?.total}
+          onPageChange={setParticipantPage}
+        />
+      </GlassPanel>
+
+      <GlassPanel className="mb-4">
+        <h2 className="mb-3.5 text-sm font-semibold text-[var(--foreground)]">Connections</h2>
+        <div className="mb-3.5 flex flex-wrap gap-2">
+          <Input
+            className="max-w-xs"
+            value={connectionSearch}
+            onChange={(e) => {
+              setConnectionSearch(e.target.value);
+              setConnectionPage(1);
+            }}
+            placeholder="Search participant"
+          />
+          <Select
+            className="w-44"
+            value={connectionStatus ?? ""}
+            onChange={(e) => {
+              setConnectionStatus(e.target.value ? (e.target.value as ConnectionStatus) : undefined);
+              setConnectionPage(1);
+            }}
+          >
+            <option value="">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
+            <option value="rejected">Rejected</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="blocked">Blocked</option>
+          </Select>
+        </div>
+        {connections.data?.items.length ? (
+          <div className="space-y-2">
+            {connections.data.items.map((connection) => (
+              <div key={connection.id} className="rounded-[var(--radius-sm)] border border-[var(--border)] p-3">
+                <Badge tone="neutral" className="capitalize">{connection.status}</Badge>
+                <p className="mt-1.5 text-sm text-[var(--foreground-muted)]">Intent: {connection.intent}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--foreground-muted)]">No connections found.</p>
+        )}
+        <Pagination
+          page={connectionPage}
+          totalPages={Math.max(1, Math.ceil((connections.data?.total ?? 0) / 25))}
+          totalItems={connections.data?.total}
+          onPageChange={setConnectionPage}
+        />
+      </GlassPanel>
+
+      <GlassPanel>
+        <h2 className="mb-3.5 text-sm font-semibold text-[var(--foreground)]">Reports</h2>
+        {reports.data?.items.length ? (
+          <div className="space-y-2">
+            {reports.data.items.map((report) => (
+              <div key={report.id} className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--border)] p-3">
+                <div>
+                  <p className="text-sm text-[var(--foreground)]">{report.reason}</p>
+                  <Badge tone="neutral" className="mt-1 capitalize">{report.status}</Badge>
+                </div>
+                <div className="flex gap-2">
+                  {report.status === "open" && (
+                    <Button size="sm" variant="outline" onClick={() => updateReport.mutate({ id: report.id, status: "reviewed" })}>
+                      Mark reviewed
+                    </Button>
+                  )}
+                  <Button size="sm" variant="danger" onClick={() => block.mutate(report.reported_user_id)}>
+                    Block participant
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--foreground-muted)]">No reports.</p>
+        )}
+      </GlassPanel>
     </div>
   );
 }

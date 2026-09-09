@@ -4,9 +4,12 @@ import { use, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ClipboardList, Search } from "lucide-react";
 import { Header } from "@/components/layout/header";
+import { FilterBar } from "@/components/shared/filter-bar";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Pagination } from "@/components/ui/pagination";
+import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, TableContainer } from "@/components/ui/table";
 import { TableSkeleton } from "@/components/shared/skeleton";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { RegistrationStatusBadge } from "@/components/registrations/registration-status-badge";
@@ -15,6 +18,9 @@ import { useEvent } from "@/hooks/useEvents";
 import { useEventRegistrations } from "@/hooks/useRegistrations";
 import { REGISTRATION_STATUS_LABELS, type RegistrationOut, type RegistrationStatus } from "@/types/registrations";
 
+const PAGE_SIZE = 25;
+
+/** Same `useEventRegistrations` hook and filter params as before. */
 export default function RegistrationsPage({
   params,
 }: {
@@ -27,10 +33,9 @@ export default function RegistrationsPage({
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<RegistrationOut | null>(null);
-  const pageSize = 25;
   const { data: registrationPage, isLoading, isError, refetch } = useEventRegistrations(eventId, {
     page,
-    pageSize,
+    pageSize: PAGE_SIZE,
     search,
     status: statusFilter,
     participationType: typeFilter,
@@ -43,10 +48,13 @@ export default function RegistrationsPage({
   );
 
   const filtered = registrations ?? [];
+  const isFiltered = search !== "" || statusFilter !== "all" || typeFilter !== "all";
 
   const pendingCount = (registrations ?? []).filter(
     (r) => r.status === "submitted" || r.status === "pending_verification",
   ).length;
+
+  const totalPages = registrationPage ? Math.max(1, Math.ceil(registrationPage.total / PAGE_SIZE)) : 1;
 
   return (
     <div>
@@ -68,20 +76,34 @@ export default function RegistrationsPage({
         </div>
       )}
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <FilterBar
+        isFiltered={isFiltered}
+        onReset={() => {
+          setSearch("");
+          setStatusFilter("all");
+          setTypeFilter("all");
+          setPage(1);
+        }}
+      >
         <div className="relative min-w-[220px] flex-1">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--foreground-subtle)]" />
           <Input
             placeholder="Search by participant name…"
             className="pl-10"
             value={search}
-          onChange={(e) => { setPage(1); setSearch(e.target.value); }}
+            onChange={(e) => {
+              setPage(1);
+              setSearch(e.target.value);
+            }}
           />
         </div>
         <Select
           className="w-56"
           value={statusFilter}
-          onChange={(e) => { setPage(1); setStatusFilter(e.target.value as RegistrationStatus | "all"); }}
+          onChange={(e) => {
+            setPage(1);
+            setStatusFilter(e.target.value as RegistrationStatus | "all");
+          }}
         >
           <option value="all">All statuses</option>
           {Object.entries(REGISTRATION_STATUS_LABELS).map(([value, label]) => (
@@ -91,7 +113,14 @@ export default function RegistrationsPage({
           ))}
         </Select>
         {participationTypes.length > 1 && (
-            <Select className="w-44" value={typeFilter} onChange={(e) => { setPage(1); setTypeFilter(e.target.value); }}>
+          <Select
+            className="w-44"
+            value={typeFilter}
+            onChange={(e) => {
+              setPage(1);
+              setTypeFilter(e.target.value);
+            }}
+          >
             <option value="all">All types</option>
             {participationTypes.map((type) => (
               <option key={type} value={type} className="capitalize">
@@ -100,19 +129,19 @@ export default function RegistrationsPage({
             ))}
           </Select>
         )}
-      </div>
+      </FilterBar>
 
       <GlassPanel padded={false}>
         {isLoading ? (
-          <div className="p-6">
+          <div className="p-5">
             <TableSkeleton rows={6} cols={4} />
           </div>
         ) : isError ? (
-          <div className="p-6">
+          <div className="p-5">
             <ErrorState onRetry={() => refetch()} description="Check the backend connection and try again." />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="p-6">
+          <div className="p-5">
             <EmptyState
               icon={ClipboardList}
               title={registrations && registrations.length > 0 ? "No registrations match your filters" : "No registrations yet"}
@@ -124,60 +153,44 @@ export default function RegistrationsPage({
             />
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-black/[0.06] text-left text-xs text-[var(--foreground-muted)]">
-                <th className="px-6 py-3 font-medium">Participant</th>
-                <th className="px-6 py-3 font-medium">Type</th>
-                <th className="px-6 py-3 font-medium">Submitted</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/[0.05]">
-              {filtered.map((registration) => (
-                <tr
-                  key={registration.id}
-                  onClick={() => setSelected(registration)}
-                  className="cursor-pointer transition-colors hover:bg-black/[0.02]"
-                >
-                  <td className="px-6 py-4 font-medium text-[var(--foreground)]">
-                    {registration.participants[0]?.full_name ?? "—"}
-                    {registration.participants.length > 1 && (
-                      <span className="ml-1.5 text-xs font-normal text-[var(--foreground-muted)]">
-                        +{registration.participants.length - 1} more
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 capitalize text-[var(--foreground-muted)]">
-                    {registration.participation_type}
-                  </td>
-                  <td className="px-6 py-4 text-[var(--foreground-muted)]">
-                    {registration.submitted_at
-                      ? new Date(registration.submitted_at).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "—"}
-                  </td>
-                  <td className="px-6 py-4">
-                    <RegistrationStatusBadge status={registration.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>Participant</TableHeaderCell>
+                  <TableHeaderCell>Type</TableHeaderCell>
+                  <TableHeaderCell>Submitted</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filtered.map((registration) => (
+                  <TableRow key={registration.id} clickable onClick={() => setSelected(registration)}>
+                    <TableCell className="font-medium text-[var(--foreground)]">
+                      {registration.participants[0]?.full_name ?? "—"}
+                      {registration.participants.length > 1 && (
+                        <span className="ml-1.5 text-xs font-normal text-[var(--foreground-muted)]">
+                          +{registration.participants.length - 1} more
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="capitalize text-[var(--foreground-muted)]">{registration.participation_type}</TableCell>
+                    <TableCell className="text-[var(--foreground-muted)]">
+                      {registration.submitted_at
+                        ? new Date(registration.submitted_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <RegistrationStatusBadge status={registration.status} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
+        <Pagination page={page} totalPages={totalPages} totalItems={registrationPage?.total} onPageChange={setPage} />
       </GlassPanel>
-
-      {(registrationPage?.total ?? 0) > pageSize && (
-        <div className="mt-4 flex items-center justify-between text-sm text-[var(--foreground-muted)]">
-          <span>{registrationPage?.total ?? 0} total registrations</span>
-          <div className="flex gap-2">
-            <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</button>
-            <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page * pageSize >= (registrationPage?.total ?? 0)} onClick={() => setPage((value) => value + 1)}>Next</button>
-          </div>
-        </div>
-      )}
 
       {selected && (
         <RegistrationDetailDrawer eventId={eventId} registration={selected} onClose={() => setSelected(null)} />

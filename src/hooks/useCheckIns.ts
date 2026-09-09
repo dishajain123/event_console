@@ -2,6 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { listCheckIns } from "@/api/tickets";
 import { useSessionStore } from "@/state/sessionStore";
 
+/**
+ * Same `listCheckIns` call and params as before. `select` that
+ * discarded everything but `items` removed — this hook has this one
+ * call site (Day-of Operations), so exposing the full page is safe;
+ * `.data?.items` replaces the old plain-array `.data`, and
+ * `.data?.total` drives real pagination.
+ */
 export function useCheckIns(eventId: string, venueId?: string, page = 1) {
   const hydrated = useSessionStore((s) => s.hydrated);
   const user = useSessionStore((s) => s.user);
@@ -9,7 +16,6 @@ export function useCheckIns(eventId: string, venueId?: string, page = 1) {
   return useQuery({
     queryKey: ["check-ins", eventId, venueId ?? "all", page],
     queryFn: () => listCheckIns(eventId, venueId, page),
-    select: (result) => result.items,
     enabled: hydrated && !!user && !!eventId,
     refetchInterval: 15_000, // day-of ops screen — keep it near-live
   });

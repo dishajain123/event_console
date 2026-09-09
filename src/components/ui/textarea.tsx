@@ -1,6 +1,7 @@
 import { forwardRef, type TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
+/** Public API unchanged. Padding tightened to match the denser Input/Select. */
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   error?: boolean;
 }
@@ -10,7 +11,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     <textarea
       ref={ref}
       className={cn(
-        "glass-input min-h-[90px] w-full px-4 py-3 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--foreground-subtle)]",
+        "glass-input min-h-[80px] w-full px-3 py-2.5 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--foreground-subtle)]",
         error && "border-[var(--danger)]",
         className,
       )}

@@ -224,14 +224,14 @@ export function RulesEditor({
 
       {/* Forward-compatible fallback for anything this editor doesn't model yet */}
       {unknownEntries.length > 0 && (
-        <GlassPanel className="border border-dashed border-slate-300/70 bg-white/30">
+        <GlassPanel className="border border-dashed border-[var(--border-strong)]" strong>
           <div className="mb-2 flex items-center gap-2">
             <Braces className="h-4 w-4 text-[var(--foreground-subtle)]" />
             <p className="text-xs font-medium text-[var(--foreground-muted)]">
               Additional configuration (set elsewhere, preserved as-is)
             </p>
           </div>
-          <pre className="overflow-x-auto rounded-[var(--radius-sm)] bg-black/[0.03] p-3 text-xs text-[var(--foreground-muted)]">
+          <pre className="overflow-x-auto rounded-[var(--radius-sm)] bg-[var(--surface-muted)] p-3 text-xs text-[var(--foreground-muted)]">
             {JSON.stringify(Object.fromEntries(unknownEntries), null, 2)}
           </pre>
         </GlassPanel>
@@ -259,7 +259,7 @@ function RuleCard({
     <GlassPanel>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)]">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--accent-soft)]">
             <Icon className="h-4 w-4 text-[var(--accent-strong)]" />
           </div>
           <div>
@@ -269,7 +269,7 @@ function RuleCard({
         </div>
         <Switch checked={enabled} onChange={onToggle} />
       </div>
-      {enabled && <div className="rise-in border-t border-black/[0.05] pt-3">{children}</div>}
+      {enabled && <div className="rise-in border-t border-[var(--border)] pt-3">{children}</div>}
     </GlassPanel>
   );
 }

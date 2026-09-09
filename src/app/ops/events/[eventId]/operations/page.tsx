@@ -7,11 +7,21 @@ import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Select } from "@/components/ui/select";
 import { KPICard } from "@/components/reports/kpi-card";
+import { Pagination } from "@/components/ui/pagination";
+import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, TableContainer } from "@/components/ui/table";
 import { TableSkeleton } from "@/components/shared/skeleton";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { useEvent, useVenues } from "@/hooks/useEvents";
 import { useCheckIns } from "@/hooks/useCheckIns";
 
+const PAGE_SIZE = 25;
+
+/**
+ * Same `useCheckIns` hook and params as before. `useCheckIns` no
+ * longer discards `total` (see the hook's own comment), so pagination
+ * below is real instead of a "disable Next once fewer than 25 came
+ * back" heuristic.
+ */
 export default function EventOperationsPage({
   params,
 }: {
@@ -23,11 +33,13 @@ export default function EventOperationsPage({
   const [venueFilter, setVenueFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
 
-  const { data: checkIns, isLoading, isError, refetch, dataUpdatedAt } = useCheckIns(
+  const { data: checkInPage, isLoading, isError, refetch, dataUpdatedAt } = useCheckIns(
     eventId,
     venueFilter === "all" ? undefined : venueFilter,
     page,
   );
+  const checkIns = checkInPage?.items;
+  const totalPages = checkInPage ? Math.max(1, Math.ceil(checkInPage.total / PAGE_SIZE)) : 1;
 
   const venueName = useMemo(() => {
     const map = new Map((venues ?? []).map((v) => [v.id, v.name]));
@@ -75,8 +87,8 @@ export default function EventOperationsPage({
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <KPICard label="Total check-ins" value={checkIns?.length ?? 0} icon={ScanLine} tone="success" />
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <KPICard label="Total check-ins" value={checkInPage?.total ?? 0} icon={ScanLine} tone="success" />
         <KPICard label="Venues active" value={byVenue.length} icon={MapPin} tone="accent" />
         <KPICard
           label="Offline scans synced"
@@ -89,15 +101,15 @@ export default function EventOperationsPage({
 
       <GlassPanel padded={false}>
         {isLoading ? (
-          <div className="p-6">
+          <div className="p-5">
             <TableSkeleton rows={5} cols={4} />
           </div>
         ) : isError ? (
-          <div className="p-6">
+          <div className="p-5">
             <ErrorState onRetry={() => refetch()} description="Check the backend connection and try again." />
           </div>
         ) : !checkIns || checkIns.length === 0 ? (
-          <div className="p-6">
+          <div className="p-5">
             <EmptyState
               icon={ScanLine}
               title="No check-ins yet"
@@ -105,38 +117,31 @@ export default function EventOperationsPage({
             />
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-black/[0.06] text-left text-xs text-[var(--foreground-muted)]">
-                <th className="px-6 py-3 font-medium">Venue</th>
-                <th className="px-6 py-3 font-medium">Source</th>
-                <th className="px-6 py-3 font-medium">Scanned at</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/[0.05]">
-              {checkIns
-                .slice()
-                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                .slice(0, 50)
-                .map((checkIn) => (
-                  <tr key={checkIn.id} className="transition-colors hover:bg-black/[0.02]">
-                    <td className="px-6 py-4 text-[var(--foreground)]">{venueName(checkIn.venue_id)}</td>
-                    <td className="px-6 py-4 capitalize text-[var(--foreground-muted)]">{checkIn.source}</td>
-                    <td className="px-6 py-4 text-[var(--foreground-muted)]">
-                      {new Date(checkIn.created_at).toLocaleTimeString()}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>Venue</TableHeaderCell>
+                  <TableHeaderCell>Source</TableHeaderCell>
+                  <TableHeaderCell>Scanned at</TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {checkIns
+                  .slice()
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .map((checkIn) => (
+                    <TableRow key={checkIn.id}>
+                      <TableCell className="text-[var(--foreground)]">{venueName(checkIn.venue_id)}</TableCell>
+                      <TableCell className="capitalize text-[var(--foreground-muted)]">{checkIn.source}</TableCell>
+                      <TableCell className="text-[var(--foreground-muted)]">{new Date(checkIn.created_at).toLocaleTimeString()}</TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-        <div className="flex items-center justify-between border-t border-black/[0.06] px-6 py-3 text-xs text-[var(--foreground-muted)]">
-          <span>Page {page}</span>
-          <div className="flex gap-2">
-            <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</button>
-            <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={!checkIns || checkIns.length < 25} onClick={() => setPage((value) => value + 1)}>Next</button>
-          </div>
-        </div>
+        <Pagination page={page} totalPages={totalPages} totalItems={checkInPage?.total} onPageChange={setPage} />
       </GlassPanel>
     </div>
   );

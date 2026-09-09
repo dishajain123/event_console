@@ -67,11 +67,9 @@ export default function EventReportsPage({
             />
           </div>
 
-          <div className="mt-6">
+          <div className="mt-4">
             <GlassPanel>
-              <h2 className="mb-4 text-sm font-semibold text-[var(--foreground)]">
-                Registrations by status
-              </h2>
+              <h2 className="mb-3.5 text-sm font-semibold text-[var(--foreground)]">Registrations by status</h2>
               {report.registrations_by_status.length === 0 ? (
                 <p className="text-sm text-[var(--foreground-muted)]">No registrations yet.</p>
               ) : (
@@ -89,7 +87,7 @@ export default function EventReportsPage({
                           </span>
                           <span className="text-[var(--foreground-muted)]">{row.count}</span>
                         </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-black/[0.05]">
+                        <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]">
                           <div
                             className="h-full rounded-full bg-[var(--accent)] transition-all duration-500"
                             style={{ width: `${pct}%` }}

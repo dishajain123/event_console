@@ -31,12 +31,20 @@ export function useSponsorshipPackages() {
   return useQuery({ queryKey: ["sponsorship", "packages"], queryFn: listSponsorshipPackages });
 }
 
+/**
+ * Same `listSponsorshipInquiries` call and params as before. `select`
+ * that discarded everything but `items` removed — this hook has this
+ * one call site (the Sponsors page), so exposing the full page here
+ * (rather than adding a parallel hook, as done for events/accounts)
+ * doesn't risk any other consumer. Callers that only used `.data` as
+ * an array now read `.data?.items` instead; `.data?.total` drives real
+ * pagination.
+ */
 export function useSponsorshipInquiries(eventId?: string, search?: string, status?: string, page = 1) {
   const ready = useReady();
   return useQuery({
     queryKey: ["sponsorship", "inquiries", eventId ?? "all", search ?? "", status ?? "all", page],
     queryFn: () => listSponsorshipInquiries(eventId, page, 25, search, status),
-    select: (result) => result.items,
     enabled: ready,
   });
 }

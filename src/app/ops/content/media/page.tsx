@@ -101,10 +101,10 @@ export default function MediaPage() {
           />
         </GlassPanel>
       ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.6fr]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.6fr]">
           <GlassPanel className="rise-in h-fit">
-            <h2 className="mb-4 text-sm font-semibold text-[var(--foreground)]">Add media</h2>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <h2 className="mb-3.5 text-sm font-semibold text-[var(--foreground)]">Add media</h2>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">Title</label>
                 <Input placeholder="Opening ceremony" {...register("title")} />
@@ -158,23 +158,23 @@ export default function MediaPage() {
           </GlassPanel>
 
           <GlassPanel padded={false}>
-            <div className="border-b border-black/[0.06] px-6 py-4">
+            <div className="border-b border-[var(--border)] px-5 py-3.5">
               <h2 className="text-sm font-semibold text-[var(--foreground)]">Gallery</h2>
             </div>
             {isLoading ? (
-              <div className="p-6">
+              <div className="p-5">
                 <TableSkeleton rows={4} cols={3} />
               </div>
             ) : isError ? (
-              <div className="p-6">
+              <div className="p-5">
                 <ErrorState onRetry={() => refetch()} description="Check the backend connection and try again." />
               </div>
             ) : !media || media.length === 0 ? (
-              <div className="p-6">
+              <div className="p-5">
                 <EmptyState icon={ImageIcon} title="No media added yet" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3.5 p-5 sm:grid-cols-2">
                 {media.map((item) => (
                   <div key={item.id} className="glass-panel overflow-hidden rounded-[var(--radius-md)] p-0">
                     <div className="flex aspect-video items-center justify-center bg-black/[0.04]">

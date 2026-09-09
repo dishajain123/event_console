@@ -9,12 +9,19 @@ function useReady() {
   return hydrated && !!user;
 }
 
+/**
+ * Same `listNotificationsForEvent` call and params as before. `select`
+ * that discarded everything but `items` removed — this hook has one
+ * call site (Communication), so exposing the full page here is safe;
+ * `.data?.items` replaces the old plain-array `.data`, and
+ * `.data?.total` drives real pagination instead of the previous
+ * "disable Next once fewer than 25 came back" heuristic.
+ */
 export function useEventNotifications(eventId: string, page = 1) {
   const ready = useReady();
   return useQuery({
     queryKey: ["notifications", "event", eventId, page],
     queryFn: () => listNotificationsForEvent(eventId, page),
-    select: (result) => result.items,
     enabled: ready && !!eventId,
   });
 }

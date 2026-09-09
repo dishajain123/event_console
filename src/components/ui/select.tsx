@@ -2,6 +2,14 @@ import { forwardRef, type SelectHTMLAttributes } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+/**
+ * Public API unchanged. This is a native <select>, so its options
+ * popup is rendered by the browser's own top layer — it was never the
+ * source of the "dropdown covers its own label" class of bug. That
+ * fix lives in the new Popover/DropdownMenu primitives (see
+ * ui/popover.tsx), which any future custom dropdown should build on
+ * instead of a bespoke absolutely-positioned div.
+ */
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   error?: boolean;
 }
@@ -12,7 +20,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       <select
         ref={ref}
         className={cn(
-          "glass-input h-11 w-full appearance-none px-4 pr-10 text-sm text-[var(--foreground)] outline-none",
+          "glass-input h-9 w-full appearance-none px-3 pr-9 text-sm text-[var(--foreground)] outline-none",
           error && "border-[var(--danger)]",
           className,
         )}
@@ -20,7 +28,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       >
         {children}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--foreground-subtle)]" />
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--foreground-subtle)]" />
     </div>
   ),
 );

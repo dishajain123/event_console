@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { CardSkeleton, TableSkeleton } from "@/components/shared/skeleton";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { KPICard } from "@/components/reports/kpi-card";
+import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, TableContainer } from "@/components/ui/table";
 import { PaymentStatusBadge } from "@/components/finance/status-badges";
 import { usePaymentWebhooks, usePayments } from "@/hooks/usePayments";
 import { useEvents } from "@/hooks/useEvents";
@@ -17,6 +18,7 @@ function formatAmount(amount: string | number, currency: string) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency }).format(value);
 }
 
+/** Same `usePayments`/`usePaymentWebhooks` hooks and filter params as before. */
 export default function ReconciliationPage() {
   const [eventFilter, setEventFilter] = useState<string>("all");
   const { data: events } = useEvents();
@@ -60,7 +62,7 @@ export default function ReconciliationPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <CardSkeleton />
           <CardSkeleton />
           <CardSkeleton />
@@ -69,7 +71,7 @@ export default function ReconciliationPage() {
         <ErrorState onRetry={() => refetch()} description="Check the backend connection and try again." />
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <KPICard
               label="Verified revenue"
               value={summary ? formatAmount(summary.verifiedSum, payments?.[0]?.currency ?? "INR") : "—"}
@@ -86,9 +88,9 @@ export default function ReconciliationPage() {
             />
           </div>
 
-          <div className="mt-6">
+          <div className="mt-4">
             <GlassPanel padded={false}>
-              <div className="border-b border-black/[0.06] px-6 py-4">
+              <div className="border-b border-[var(--border)] px-5 py-3.5">
                 <h2 className="text-sm font-semibold text-[var(--foreground)]">
                   Payments needing attention
                 </h2>
@@ -97,11 +99,11 @@ export default function ReconciliationPage() {
                 </p>
               </div>
               {isLoading ? (
-                <div className="p-6">
+                <div className="p-5">
                   <TableSkeleton rows={3} cols={3} />
                 </div>
               ) : needingAttention.length === 0 ? (
-                <div className="p-6">
+                <div className="p-5">
                   <EmptyState
                     icon={CheckCircle2}
                     title="Nothing stuck"
@@ -109,66 +111,70 @@ export default function ReconciliationPage() {
                   />
                 </div>
               ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-black/[0.06] text-left text-xs text-[var(--foreground-muted)]">
-                      <th className="px-6 py-3 font-medium">Gateway Order</th>
-                      <th className="px-6 py-3 font-medium">Amount</th>
-                      <th className="px-6 py-3 font-medium">Initiated</th>
-                      <th className="px-6 py-3 font-medium">Status</th>
-                      <th className="px-6 py-3 font-medium">Reconciliation</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-black/[0.05]">
-                    {needingAttention.map((payment) => (
-                      <tr key={payment.id}>
-                        <td className="px-6 py-4 font-mono text-xs text-[var(--foreground)]">
-                          {payment.gateway_order_id ?? "—"}
-                        </td>
-                        <td className="px-6 py-4 font-medium text-[var(--foreground)]">
-                          {formatAmount(payment.amount, payment.currency)}
-                        </td>
-                        <td className="px-6 py-4 text-[var(--foreground-muted)]">
-                          {new Date(payment.created_at).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4">
-                          <PaymentStatusBadge status={payment.status} />
-                        </td>
-                        <td className="px-6 py-4 text-xs text-[var(--foreground-muted)]">
-                          <span className="font-medium text-[var(--foreground)]">{payment.reconciliation_status}</span>
-                          {payment.reconciliation_error && <div>{payment.reconciliation_error}</div>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableHeaderCell>Gateway Order</TableHeaderCell>
+                        <TableHeaderCell>Amount</TableHeaderCell>
+                        <TableHeaderCell>Initiated</TableHeaderCell>
+                        <TableHeaderCell>Status</TableHeaderCell>
+                        <TableHeaderCell>Reconciliation</TableHeaderCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {needingAttention.map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="font-mono text-xs text-[var(--foreground)]">
+                            {payment.gateway_order_id ?? "—"}
+                          </TableCell>
+                          <TableCell className="font-medium text-[var(--foreground)]">
+                            {formatAmount(payment.amount, payment.currency)}
+                          </TableCell>
+                          <TableCell className="text-[var(--foreground-muted)]">
+                            {new Date(payment.created_at).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <PaymentStatusBadge status={payment.status} />
+                          </TableCell>
+                          <TableCell className="text-xs text-[var(--foreground-muted)]">
+                            <span className="font-medium text-[var(--foreground)]">{payment.reconciliation_status}</span>
+                            {payment.reconciliation_error && <div>{payment.reconciliation_error}</div>}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               )}
             </GlassPanel>
           </div>
-          <div className="mt-6">
+          <div className="mt-4">
             <GlassPanel padded={false}>
-              <div className="border-b border-black/[0.06] px-6 py-4">
+              <div className="border-b border-[var(--border)] px-5 py-3.5">
                 <h2 className="text-sm font-semibold text-[var(--foreground)]">Webhook inbox</h2>
                 <p className="text-xs text-[var(--foreground-muted)]">Durable Razorpay events and retry state.</p>
               </div>
               <div className="max-h-72 overflow-auto">
                 {(webhooks ?? []).length === 0 ? (
-                  <p className="p-6 text-sm text-[var(--foreground-muted)]">No webhook events received.</p>
+                  <p className="p-5 text-sm text-[var(--foreground-muted)]">No webhook events received.</p>
                 ) : (
-                  <table className="w-full text-sm">
-                    <tbody className="divide-y divide-black/[0.05]">
-                      {(webhooks ?? []).slice(0, 20).map((webhook) => (
-                        <tr key={webhook.id}>
-                          <td className="px-6 py-3 font-mono text-xs">{webhook.provider_event_id}</td>
-                          <td className="px-6 py-3">{webhook.event_type}</td>
-                          <td className="px-6 py-3">{webhook.processing_status}</td>
-                          <td className="px-6 py-3 text-xs text-[var(--foreground-muted)]">
-                            {webhook.failure_reason ?? `${webhook.attempts} attempt(s)`}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <TableContainer>
+                    <Table>
+                      <TableBody>
+                        {(webhooks ?? []).slice(0, 20).map((webhook) => (
+                          <TableRow key={webhook.id}>
+                            <TableCell className="font-mono text-xs text-[var(--foreground)]">{webhook.provider_event_id}</TableCell>
+                            <TableCell className="text-[var(--foreground)]">{webhook.event_type}</TableCell>
+                            <TableCell className="text-[var(--foreground-muted)]">{webhook.processing_status}</TableCell>
+                            <TableCell className="text-xs text-[var(--foreground-muted)]">
+                              {webhook.failure_reason ?? `${webhook.attempts} attempt(s)`}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 )}
               </div>
             </GlassPanel>

@@ -9,9 +9,11 @@ import { MessageSquare, Send, Users } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/ui/pagination";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { TableSkeleton } from "@/components/shared/skeleton";
 import { useEvents } from "@/hooks/useEvents";
@@ -27,12 +29,21 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
+const PAGE_SIZE = 25;
+
+/**
+ * Same `useSendNotification`/`useEventNotifications` hooks and the
+ * same send payload as before. `useEventNotifications` no longer
+ * discards `total` (see the hook's own comment), so the pager below
+ * now shows real page counts via the shared [Pagination] component
+ * instead of a heuristic Next-button disable.
+ */
 export default function CommunicationPage() {
   const { data: events } = useEvents();
   const [eventId, setEventId] = useState("");
   const [page, setPage] = useState(1);
   const sendNotification = useSendNotification(eventId);
-  const { data: sentNotifications, isLoading: sendsLoading, isError: sendsError, refetch: refetchSends } = useEventNotifications(eventId, page);
+  const { data: notificationPage, isLoading: sendsLoading, isError: sendsError, refetch: refetchSends } = useEventNotifications(eventId, page);
 
   const {
     register,
@@ -61,7 +72,8 @@ export default function CommunicationPage() {
     }
   }
 
-  const sends = sentNotifications ? groupNotificationsIntoSends(sentNotifications) : [];
+  const sends = notificationPage ? groupNotificationsIntoSends(notificationPage.items) : [];
+  const totalPages = notificationPage ? Math.max(1, Math.ceil(notificationPage.total / PAGE_SIZE)) : 1;
 
   return (
     <div>
@@ -87,10 +99,10 @@ export default function CommunicationPage() {
           />
         </GlassPanel>
       ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.2fr]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.2fr]">
           <GlassPanel className="rise-in h-fit">
-            <h2 className="mb-4 text-sm font-semibold text-[var(--foreground)]">Compose</h2>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <h2 className="mb-3.5 text-sm font-semibold text-[var(--foreground)]">Compose</h2>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">Title</label>
                 <Input placeholder="Schedule update" {...register("title")} />
@@ -98,11 +110,7 @@ export default function CommunicationPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">Message</label>
-                <textarea
-                  className="glass-input min-h-[100px] w-full resize-none p-3 text-sm outline-none placeholder:text-[var(--foreground-subtle)]"
-                  placeholder="The finals have moved to 5 PM at the main venue."
-                  {...register("body")}
-                />
+                <Textarea placeholder="The finals have moved to 5 PM at the main venue." {...register("body")} />
                 {errors.body && <p className="mt-1 text-xs text-[var(--danger)]">{errors.body.message}</p>}
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -134,23 +142,23 @@ export default function CommunicationPage() {
           </GlassPanel>
 
           <GlassPanel padded={false}>
-            <div className="border-b border-black/[0.06] px-6 py-4">
+            <div className="border-b border-[var(--border)] px-5 py-3.5">
               <h2 className="text-sm font-semibold text-[var(--foreground)]">Recent sends</h2>
             </div>
             {sendsLoading ? (
-              <div className="p-6">
+              <div className="p-5">
                 <TableSkeleton rows={3} cols={2} />
               </div>
             ) : sendsError ? (
-              <div className="p-6">
+              <div className="p-5">
                 <ErrorState onRetry={() => refetchSends()} description="Check the backend connection and try again." />
               </div>
             ) : sends.length === 0 ? (
-              <div className="p-6">
+              <div className="p-5">
                 <EmptyState icon={MessageSquare} title="Nothing sent yet for this event" />
               </div>
             ) : (
-              <div className="divide-y divide-black/[0.05]">
+              <div className="divide-y divide-[var(--border)]">
                 {sends.map((send) => (
                   <div key={send.key} className="p-4">
                     <div className="mb-1 flex items-center justify-between">
@@ -170,7 +178,7 @@ export default function CommunicationPage() {
                 ))}
               </div>
             )}
-            {eventId && <div className="flex items-center justify-between border-t border-black/[0.06] px-6 py-3 text-xs text-[var(--foreground-muted)]"><span>Page {page}</span><div className="flex gap-2"><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</button><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={!sentNotifications || sentNotifications.length < 25} onClick={() => setPage((value) => value + 1)}>Next</button></div></div>}
+            <Pagination page={page} totalPages={totalPages} totalItems={notificationPage?.total} onPageChange={setPage} />
           </GlassPanel>
         </div>
       )}

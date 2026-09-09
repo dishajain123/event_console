@@ -7,18 +7,25 @@ import { z } from "zod";
 import { RotateCcw, Plus, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/layout/header";
+import { PageToolbar } from "@/components/shared/page-toolbar";
+import { FilterBar } from "@/components/shared/filter-bar";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
+import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, TableContainer } from "@/components/ui/table";
 import { TableSkeleton } from "@/components/shared/skeleton";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { RefundStatusBadge } from "@/components/finance/status-badges";
 import { useApproveRefund, usePayments, useRefunds, useRequestRefund } from "@/hooks/usePayments";
 import { useSessionStore } from "@/state/sessionStore";
 import { canApproveRefund, canDraftRefund } from "@/lib/rbac";
-import type { RefundOut } from "@/types/payments";
+import { REFUND_STATUS_LABELS, type RefundOut, type RefundStatus } from "@/types/payments";
+
+const PAGE_SIZE = 25;
 
 const draftSchema = z.object({
   payment_id: z.string().min(1, "Select a verified payment"),
@@ -32,14 +39,27 @@ function formatAmount(amount: string | number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(value);
 }
 
+/**
+ * Same hooks (`useRefunds`, `usePayments`, `useRequestRefund`,
+ * `useApproveRefund`) and mutation payloads as before. The draft-refund
+ * modal now uses the shared [Dialog] component instead of a bespoke
+ * `fixed inset-0` overlay, which gets it Escape-to-close and
+ * body-scroll-lock for free. Added a status filter and real pagination
+ * (`useRefunds` already returns `total`) since this list has no way to
+ * narrow down or page through refunds beyond the first 25.
+ */
 export default function RefundsPage() {
   const roles = useSessionStore((s) => s.roles);
-  const { data: refundPage, isLoading, isError, refetch } = useRefunds();
+  const [statusFilter, setStatusFilter] = useState<RefundStatus | "all">("all");
+  const [page, setPage] = useState(1);
+  const { data: refundPage, isLoading, isError, refetch } = useRefunds({ page, pageSize: PAGE_SIZE, status: statusFilter });
   const { data: paymentPage } = usePayments();
   const refunds = refundPage?.items;
   const payments = paymentPage?.items;
   const requestRefund = useRequestRefund();
   const approveRefund = useApproveRefund();
+  const isFiltered = statusFilter !== "all";
+  const totalPages = refundPage ? Math.max(1, Math.ceil(refundPage.total / PAGE_SIZE)) : 1;
 
   const [draftOpen, setDraftOpen] = useState(false);
   const [approveTarget, setApproveTarget] = useState<RefundOut | null>(null);
@@ -80,127 +100,149 @@ export default function RefundsPage() {
   return (
     <div>
       <Header title="Refunds" />
+      <PageToolbar
+        description="Drafting and approving are deliberately separate roles — a two-person control on every refund."
+        actions={
+          canDraftRefund(roles) ? (
+            <Button onClick={() => setDraftOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Draft refund
+            </Button>
+          ) : undefined
+        }
+      />
 
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-[var(--foreground-muted)]">
-          Drafting and approving are deliberately separate roles — a two-person control on every refund.
-        </p>
-        {canDraftRefund(roles) && (
-          <Button onClick={() => setDraftOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Draft refund
-          </Button>
-        )}
-      </div>
+      <FilterBar
+        isFiltered={isFiltered}
+        onReset={() => {
+          setStatusFilter("all");
+          setPage(1);
+        }}
+      >
+        <Select
+          className="w-52"
+          value={statusFilter}
+          onChange={(e) => {
+            setPage(1);
+            setStatusFilter(e.target.value as RefundStatus | "all");
+          }}
+        >
+          <option value="all">All statuses</option>
+          {Object.entries(REFUND_STATUS_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </Select>
+      </FilterBar>
 
       <GlassPanel padded={false}>
         {isLoading ? (
-          <div className="p-6">
+          <div className="p-5">
             <TableSkeleton rows={5} cols={5} />
           </div>
         ) : isError ? (
-          <div className="p-6">
+          <div className="p-5">
             <ErrorState onRetry={() => refetch()} description="Check the backend connection and try again." />
           </div>
         ) : !refunds || refunds.length === 0 ? (
-          <div className="p-6">
+          <div className="p-5">
             <EmptyState
               icon={RotateCcw}
-              title="No refund requests"
+              title={isFiltered ? "No refunds match this filter" : "No refund requests"}
               description="Drafted refunds will appear here, waiting for Finance Admin approval."
             />
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-black/[0.06] text-left text-xs text-[var(--foreground-muted)]">
-                <th className="px-6 py-3 font-medium">Amount</th>
-                <th className="px-6 py-3 font-medium">Payment / gateway refund</th>
-                <th className="px-6 py-3 font-medium">Reason</th>
-                <th className="px-6 py-3 font-medium">Requested</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-                <th className="px-6 py-3 font-medium">Reconciliation</th>
-                <th className="px-6 py-3 font-medium" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/[0.05]">
-              {refunds.map((refund) => (
-                <tr key={refund.id} className="transition-colors hover:bg-black/[0.02]">
-                  <td className="px-6 py-4 font-medium text-[var(--foreground)]">{formatAmount(refund.amount)}</td>
-                  <td className="px-6 py-4 font-mono text-xs text-[var(--foreground-muted)]">
-                    <div>{refund.payment_id.slice(0, 12)}</div>
-                    <div>{refund.gateway_refund_id ?? "Provider ref pending"}</div>
-                  </td>
-                  <td className="px-6 py-4 max-w-[280px] truncate text-[var(--foreground-muted)]">
-                    {refund.reason || "—"}
-                  </td>
-                  <td className="px-6 py-4 text-[var(--foreground-muted)]">
-                    {new Date(refund.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                  </td>
-                  <td className="px-6 py-4">
-                    <RefundStatusBadge status={refund.status} />
-                  </td>
-                  <td className="px-6 py-4 text-xs text-[var(--foreground-muted)]">
-                    {refund.reconciliation_error ?? `${refund.reconciliation_attempts} attempt(s)`}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    {refund.status === "pending_admin_approval" && canApproveRefund(roles) && (
-                      <Button size="sm" variant="outline" onClick={() => setApproveTarget(refund)}>
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        Approve
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>Amount</TableHeaderCell>
+                  <TableHeaderCell>Payment / gateway refund</TableHeaderCell>
+                  <TableHeaderCell>Reason</TableHeaderCell>
+                  <TableHeaderCell>Requested</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell>Reconciliation</TableHeaderCell>
+                  <TableHeaderCell />
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {refunds.map((refund) => (
+                  <TableRow key={refund.id}>
+                    <TableCell className="font-medium text-[var(--foreground)]">{formatAmount(refund.amount)}</TableCell>
+                    <TableCell className="font-mono text-xs text-[var(--foreground-muted)]">
+                      <div>{refund.payment_id.slice(0, 12)}</div>
+                      <div>{refund.gateway_refund_id ?? "Provider ref pending"}</div>
+                    </TableCell>
+                    <TableCell className="max-w-[280px] truncate text-[var(--foreground-muted)]">
+                      {refund.reason || "—"}
+                    </TableCell>
+                    <TableCell className="text-[var(--foreground-muted)]">
+                      {new Date(refund.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                    </TableCell>
+                    <TableCell>
+                      <RefundStatusBadge status={refund.status} />
+                    </TableCell>
+                    <TableCell className="text-xs text-[var(--foreground-muted)]">
+                      {refund.reconciliation_error ?? `${refund.reconciliation_attempts} attempt(s)`}
+                    </TableCell>
+                    <TableCell>
+                      {refund.status === "pending_admin_approval" && canApproveRefund(roles) && (
+                        <div className="flex justify-end">
+                          <Button size="sm" variant="outline" onClick={() => setApproveTarget(refund)}>
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                            Approve
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
+        <Pagination page={page} totalPages={totalPages} totalItems={refundPage?.total} onPageChange={setPage} />
       </GlassPanel>
 
-      {draftOpen && (
-        <div className="fade-in fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" onClick={() => setDraftOpen(false)} />
-          <GlassPanel strong className="rise-in relative w-full max-w-md p-6">
-            <h3 className="mb-4 text-base font-semibold text-[var(--foreground)]">Draft a refund</h3>
-            <form onSubmit={handleSubmit(onDraftSubmit)} className="space-y-4">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">
-                  Verified payment
-                </label>
-                <Select {...register("payment_id")}>
-                  <option value="">Select a payment…</option>
-                  {verifiedPayments.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {formatAmount(p.amount)} — {p.gateway_payment_id ?? p.id.slice(0, 8)}
-                    </option>
-                  ))}
-                </Select>
-                {errors.payment_id && <p className="mt-1 text-xs text-[var(--danger)]">{errors.payment_id.message}</p>}
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">
-                  Amount <span className="text-[var(--foreground-subtle)]">(optional — defaults to full amount)</span>
-                </label>
-                <Input type="number" placeholder="Full payment amount" {...register("amount")} />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">Reason</label>
-                <Input placeholder="Why this refund is needed" {...register("reason")} />
-                {errors.reason && <p className="mt-1 text-xs text-[var(--danger)]">{errors.reason.message}</p>}
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={() => setDraftOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" loading={requestRefund.isPending}>
-                  Submit draft
-                </Button>
-              </div>
-            </form>
-          </GlassPanel>
-        </div>
-      )}
+      <Dialog open={draftOpen} onClose={() => setDraftOpen(false)} title="Draft a refund" size="sm">
+        <form onSubmit={handleSubmit(onDraftSubmit)} className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+              Verified payment
+            </label>
+            <Select {...register("payment_id")}>
+              <option value="">Select a payment…</option>
+              {verifiedPayments.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {formatAmount(p.amount)} — {p.gateway_payment_id ?? p.id.slice(0, 8)}
+                </option>
+              ))}
+            </Select>
+            {errors.payment_id && <p className="mt-1 text-xs text-[var(--danger)]">{errors.payment_id.message}</p>}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+              Amount <span className="text-[var(--foreground-subtle)]">(optional — defaults to full amount)</span>
+            </label>
+            <Input type="number" placeholder="Full payment amount" {...register("amount")} />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">Reason</label>
+            <Input placeholder="Why this refund is needed" {...register("reason")} />
+            {errors.reason && <p className="mt-1 text-xs text-[var(--danger)]">{errors.reason.message}</p>}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setDraftOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={requestRefund.isPending}>
+              Submit draft
+            </Button>
+          </div>
+        </form>
+      </Dialog>
 
       <ConfirmActionDialog
         open={!!approveTarget}

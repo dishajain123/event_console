@@ -96,7 +96,7 @@ export function ValidationPreviewPanel({
       </Button>
 
       {validate.data && (
-        <div className="rise-in mt-4 border-t border-black/[0.05] pt-4">
+        <div className="rise-in mt-4 border-t border-[var(--border)] pt-4">
           {validate.data.is_eligible ? (
             <div className="flex items-center gap-2 text-sm font-medium text-[var(--success)]">
               <CheckCircle2 className="h-4 w-4" />

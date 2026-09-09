@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { History, ChevronLeft, ChevronRight, Filter, X } from "lucide-react";
+import { History } from "lucide-react";
 import { Header } from "@/components/layout/header";
+import { FilterBar } from "@/components/shared/filter-bar";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/ui/pagination";
+import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, TableContainer } from "@/components/ui/table";
 import { TableSkeleton } from "@/components/shared/skeleton";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { AuditLogDetailDrawer } from "@/components/audit/audit-log-detail-drawer";
@@ -26,6 +28,11 @@ const ENTITY_TONE: Record<string, "neutral" | "accent" | "success" | "warning" |
   staff_assignment: "danger",
 };
 
+/**
+ * Same `useAuditLog` hook, same filter params, and the same
+ * offset/PAGE_SIZE pagination state as before — only the presentation
+ * (FilterBar wrapper, Table primitives, shared Pagination) changed.
+ */
 export default function AuditLogPage() {
   const [entityType, setEntityType] = useState("");
   const [action, setAction] = useState("");
@@ -60,11 +67,7 @@ export default function AuditLogPage() {
     <div>
       <Header title="Audit Log" />
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--foreground-muted)]">
-          <Filter className="h-3.5 w-3.5" />
-          Filters
-        </div>
+      <FilterBar isFiltered={hasFilters} onReset={resetFilters}>
         <Select
           className="w-48"
           value={entityType}
@@ -107,25 +110,19 @@ export default function AuditLogPage() {
             setOffset(0);
           }}
         />
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={resetFilters}>
-            <X className="h-3.5 w-3.5" />
-            Clear
-          </Button>
-        )}
-      </div>
+      </FilterBar>
 
       <GlassPanel padded={false}>
         {isLoading && !data ? (
-          <div className="p-6">
+          <div className="p-5">
             <TableSkeleton rows={8} cols={4} />
           </div>
         ) : isError ? (
-          <div className="p-6">
+          <div className="p-5">
             <ErrorState onRetry={() => refetch()} description="Check the backend connection and try again." />
           </div>
         ) : !data || data.items.length === 0 ? (
-          <div className="p-6">
+          <div className="p-5">
             <EmptyState
               icon={History}
               title={hasFilters ? "No entries match your filters" : "No audit entries yet"}
@@ -134,64 +131,33 @@ export default function AuditLogPage() {
           </div>
         ) : (
           <>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-black/[0.06] text-left text-xs text-[var(--foreground-muted)]">
-                  <th className="px-6 py-3 font-medium">When</th>
-                  <th className="px-6 py-3 font-medium">Entity</th>
-                  <th className="px-6 py-3 font-medium">Action</th>
-                  <th className="px-6 py-3 font-medium">Actor</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/[0.05]">
-                {data.items.map((entry) => (
-                  <tr
-                    key={entry.id}
-                    onClick={() => setSelected(entry)}
-                    className="cursor-pointer transition-colors hover:bg-black/[0.02]"
-                  >
-                    <td className="px-6 py-4 text-[var(--foreground-muted)]">
-                      {new Date(entry.created_at).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge tone={ENTITY_TONE[entry.entity_type] ?? "neutral"}>
-                        {entry.entity_type.replace(/_/g, " ")}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 capitalize text-[var(--foreground)]">
-                      {entry.action.replace(/_/g, " ")}
-                    </td>
-                    <td className="px-6 py-4 font-mono text-xs text-[var(--foreground-muted)]">
-                      {entry.actor_user_id ? entry.actor_user_id.slice(0, 8) + "…" : "System"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <div className="flex items-center justify-between border-t border-black/[0.06] px-6 py-4">
-              <p className="text-xs text-[var(--foreground-muted)]">
-                {total} total entr{total === 1 ? "y" : "ies"} · page {page} of {totalPages}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={offset === 0}
-                  onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={offset + PAGE_SIZE >= total}
-                  onClick={() => setOffset(offset + PAGE_SIZE)}
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell>When</TableHeaderCell>
+                    <TableHeaderCell>Entity</TableHeaderCell>
+                    <TableHeaderCell>Action</TableHeaderCell>
+                    <TableHeaderCell>Actor</TableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {data.items.map((entry) => (
+                    <TableRow key={entry.id} clickable onClick={() => setSelected(entry)}>
+                      <TableCell className="text-[var(--foreground-muted)]">{new Date(entry.created_at).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <Badge tone={ENTITY_TONE[entry.entity_type] ?? "neutral"}>{entry.entity_type.replace(/_/g, " ")}</Badge>
+                      </TableCell>
+                      <TableCell className="capitalize text-[var(--foreground)]">{entry.action.replace(/_/g, " ")}</TableCell>
+                      <TableCell className="font-mono text-xs text-[var(--foreground-muted)]">
+                        {entry.actor_user_id ? entry.actor_user_id.slice(0, 8) + "…" : "System"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <Pagination page={page} totalPages={totalPages} totalItems={total} onPageChange={(next) => setOffset((next - 1) * PAGE_SIZE)} />
           </>
         )}
       </GlassPanel>

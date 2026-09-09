@@ -243,7 +243,7 @@ export default function ConfigurationBuilderPage({
 
       <Header title="Configuration Builder" />
 
-      <form onSubmit={handleSubmit(onSaveConfiguration)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSaveConfiguration)} className="space-y-4">
         {/* Event details */}
         <GlassPanel className="rise-in">
           <h2 className="mb-1 text-sm font-semibold text-[var(--foreground)]">Event details</h2>
@@ -617,7 +617,7 @@ export default function ConfigurationBuilderPage({
               <Input type="number" placeholder="Unlimited" {...register("capacity")} />
             </div>
           </div>
-          <div className="mt-4 border-t border-black/[0.05] pt-4">
+          <div className="mt-4 border-t border-[var(--border)] pt-4">
             <Controller
               control={control}
               name="approvalRequired"
@@ -661,7 +661,7 @@ export default function ConfigurationBuilderPage({
 
       {/* Dynamic field schema, per participation type */}
       {participationTypes.length > 0 && (
-        <div className="mt-8 border-t border-black/[0.06] pt-8">
+        <div className="mt-6 border-t border-[var(--border)] pt-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-[var(--foreground)]">Registration form fields</h2>
@@ -682,7 +682,7 @@ export default function ConfigurationBuilderPage({
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
             <div>
               {fieldSchemaLoading ? (
                 <CardSkeleton />

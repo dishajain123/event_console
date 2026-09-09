@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -23,10 +24,12 @@ import {
   RotateCcw,
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSessionStore } from "@/state/sessionStore";
 import { useUiStore } from "@/state/uiStore";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   isOperationsAdmin,
   isScopedOnlyEventManager,
@@ -45,6 +48,7 @@ interface NavSection {
   items: NavItem[];
 }
 
+/** Unchanged from before — same sections, same RBAC gating, same hrefs. */
 function useOpsNavSections(): NavSection[] {
   const roles = useSessionStore((s) => s.roles);
 
@@ -130,6 +134,7 @@ function useOpsNavSections(): NavSection[] {
   return sections;
 }
 
+/** Unchanged from before. */
 function useFinanceNavSections(): NavSection[] {
   const roles = useSessionStore((s) => s.roles);
   const sections: NavSection[] = [
@@ -168,11 +173,21 @@ function useFinanceNavSections(): NavSection[] {
   return sections;
 }
 
+/**
+ * Navigation, RBAC gating, and the collapse-to-icons behavior are all
+ * unchanged from before. What's new: each section heading is now its
+ * own expand/collapse toggle (so a long nav can be tidied without
+ * hiding the whole sidebar), and collapsed-mode items use the new
+ * [Tooltip] component instead of the native `title` attribute, so the
+ * label actually appears promptly and consistently instead of relying
+ * on the browser's built-in (slow, unstyled) tooltip.
+ */
 export function Sidebar({ area }: { area: "ops" | "finance" }) {
   const pathname = usePathname();
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUiStore((s) => s.toggleSidebarCollapsed);
   const roles = useSessionStore((s) => s.roles);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   const opsSections = useOpsNavSections();
   const financeSections = useFinanceNavSections();
@@ -180,16 +195,25 @@ export function Sidebar({ area }: { area: "ops" | "finance" }) {
   const canSwitch = area === "ops" ? canAccessFinanceConsole(roles) : isOperationsAdmin(roles);
   const scopedOnly = isScopedOnlyEventManager(roles);
 
+  function toggleSection(label: string) {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  }
+
   return (
     <aside
       className={cn(
         "glass-panel-dark fade-in sticky top-4 flex h-[calc(100vh-2rem)] flex-col rounded-[var(--radius-lg)] transition-[width] duration-200",
-        collapsed ? "w-[76px]" : "w-64",
+        collapsed ? "w-[68px]" : "w-60",
       )}
     >
-      <div className="flex items-center gap-3 px-4 py-5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] shadow-lg shadow-indigo-900/30">
-          <ShieldCheck className="h-5 w-5 text-white" />
+      <div className="flex items-center gap-3 px-3.5 py-4">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--accent)]">
+          <ShieldCheck className="h-4 w-4 text-white" />
         </div>
         {!collapsed && (
           <div className="min-w-0">
@@ -201,59 +225,93 @@ export function Sidebar({ area }: { area: "ops" | "finance" }) {
         )}
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-3">
-        {sections.map((section) => (
-          <div key={section.label}>
-            {!collapsed && (
-              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--dark-foreground-subtle)]">
-                {section.label}
-              </p>
-            )}
-            <div className="space-y-1">
-              {section.items.map((item) => {
-                const active = pathname === item.href || pathname.startsWith(item.href + "/");
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
+      <nav className="flex-1 space-y-1 overflow-y-auto px-2.5 py-2">
+        {sections.map((section) => {
+          const sectionCollapsed = collapsedSections.has(section.label);
+          return (
+            <div key={section.label} className="pb-1">
+              {!collapsed && (
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.label)}
+                  className="focus-ring group mb-1 flex w-full items-center justify-between rounded-[var(--radius-sm)] px-2.5 py-1.5 text-left"
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--dark-foreground-subtle)]">
+                    {section.label}
+                  </span>
+                  <ChevronDown
                     className={cn(
-                      "group flex items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-white/10 text-white"
-                        : "text-[var(--dark-foreground-muted)] hover:bg-white/[0.06] hover:text-white",
+                      "h-3 w-3 text-[var(--dark-foreground-subtle)] transition-transform group-hover:text-[var(--dark-foreground-muted)]",
+                      sectionCollapsed && "-rotate-90",
                     )}
-                    title={collapsed ? item.label : undefined}
-                  >
-                    <Icon className={cn("h-[18px] w-[18px] shrink-0", active && "text-[var(--accent)]")} />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                    {active && !collapsed && (
-                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-                    )}
-                  </Link>
-                );
-              })}
+                  />
+                </button>
+              )}
+              {(!sectionCollapsed || collapsed) && (
+                <div className="space-y-0.5">
+                  {section.items.map((item) => {
+                    const active = pathname === item.href || pathname.startsWith(item.href + "/");
+                    const Icon = item.icon;
+                    const link = (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "group flex items-center gap-2.5 rounded-[var(--radius-sm)] px-2.5 py-2 text-sm font-medium transition-colors",
+                          active
+                            ? "bg-white/10 text-white"
+                            : "text-[var(--dark-foreground-muted)] hover:bg-white/[0.06] hover:text-white",
+                        )}
+                      >
+                        <Icon className={cn("h-[17px] w-[17px] shrink-0", active && "text-[var(--accent)]")} />
+                        {!collapsed && <span className="truncate">{item.label}</span>}
+                        {active && !collapsed && (
+                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                        )}
+                      </Link>
+                    );
+                    return collapsed ? (
+                      <Tooltip key={item.href} label={item.label} side="right">
+                        {link}
+                      </Tooltip>
+                    ) : (
+                      link
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {!scopedOnly && canSwitch && (
-        <div className="border-t border-white/[0.08] p-3">
-          <Link
-            href={area === "ops" ? "/finance/dashboard" : "/ops/dashboard"}
-            className="flex items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium text-[var(--dark-foreground-muted)] hover:bg-white/[0.06] hover:text-white"
-          >
-            {area === "ops" ? <Wallet className="h-[18px] w-[18px]" /> : <LayoutGrid className="h-[18px] w-[18px]" />}
-            {!collapsed && <span>Switch to {area === "ops" ? "Finance" : "Operations"}</span>}
-          </Link>
+        <div className="border-t border-white/[0.08] p-2.5">
+          {collapsed ? (
+            <Tooltip label={`Switch to ${area === "ops" ? "Finance" : "Operations"}`} side="right">
+              <Link
+                href={area === "ops" ? "/finance/dashboard" : "/ops/dashboard"}
+                className="flex items-center justify-center rounded-[var(--radius-sm)] px-2.5 py-2 text-[var(--dark-foreground-muted)] hover:bg-white/[0.06] hover:text-white"
+              >
+                {area === "ops" ? <Wallet className="h-[17px] w-[17px]" /> : <LayoutGrid className="h-[17px] w-[17px]" />}
+              </Link>
+            </Tooltip>
+          ) : (
+            <Link
+              href={area === "ops" ? "/finance/dashboard" : "/ops/dashboard"}
+              className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-2.5 py-2 text-sm font-medium text-[var(--dark-foreground-muted)] hover:bg-white/[0.06] hover:text-white"
+            >
+              {area === "ops" ? <Wallet className="h-[17px] w-[17px]" /> : <LayoutGrid className="h-[17px] w-[17px]" />}
+              <span>Switch to {area === "ops" ? "Finance" : "Operations"}</span>
+            </Link>
+          )}
         </div>
       )}
 
-      <div className="border-t border-white/[0.08] p-3">
+      <div className="border-t border-white/[0.08] p-2.5">
         <button
           onClick={toggleCollapsed}
-          className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] py-2 text-[var(--dark-foreground-muted)] hover:bg-white/[0.06] hover:text-white"
+          className="focus-ring flex w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] py-1.5 text-[var(--dark-foreground-muted)] hover:bg-white/[0.06] hover:text-white"
         >
           {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
         </button>
