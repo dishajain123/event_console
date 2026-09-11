@@ -95,7 +95,11 @@ export function MainCategoryDialog({
           <label className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">
             Description <span className="text-[var(--foreground-subtle)]">(optional)</span>
           </label>
-          <Textarea placeholder="A short description for operators" {...register("description")} />
+          <Textarea placeholder="A short description for participants" {...register("description")} />
+          <p className="mt-1 text-xs text-[var(--foreground-muted)]">
+            The mobile home card shows up to three active subcategories and a count of any others.
+            This description appears when there are no active subcategories. Keep it short enough for two lines.
+          </p>
         </div>
 
         <Controller
@@ -106,7 +110,7 @@ export function MainCategoryDialog({
               checked={field.value}
               onChange={field.onChange}
               label={field.value ? "Active" : "Inactive"}
-              description="Inactive categories can be kept for reference without showing up in new selections."
+              description="Inactive main categories are hidden from the mobile app and new selections."
             />
           )}
         />
@@ -208,7 +212,7 @@ export function SubCategoryDialog({
           <label className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">
             Description <span className="text-[var(--foreground-subtle)]">(optional)</span>
           </label>
-          <Textarea placeholder="A short description for operators" {...register("description")} />
+          <Textarea placeholder="A short description for participants" {...register("description")} />
         </div>
 
         <Controller
@@ -219,7 +223,7 @@ export function SubCategoryDialog({
               checked={field.value}
               onChange={field.onChange}
               label={field.value ? "Active" : "Inactive"}
-              description="Inactive subcategories can be kept for reference without showing up in new selections."
+              description="Inactive subcategories are hidden from mobile home previews and category browsing."
             />
           )}
         />

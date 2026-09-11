@@ -306,7 +306,7 @@ export default function CategoriesPage() {
             <div>
               <h2 className="text-sm font-semibold text-[var(--foreground)]">Sub categories</h2>
               <p className="text-xs text-[var(--foreground-muted)]">
-                These belong to the selected main category and feed the event form.
+                Active subcategories appear in mobile browsing. Home cards preview the first three alphabetically, with a count of any others.
               </p>
             </div>
             <div className="flex items-center gap-2">

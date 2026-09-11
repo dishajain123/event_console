@@ -61,10 +61,30 @@ function roleLabel(roleName: string): string {
 
 const PAGE_SIZE = 100;
 
+interface AccountManagementPageProps {
+  /** Header title. Defaults to the original unscoped "Account Management". */
+  title?: string;
+  /** Create-panel description override. Defaults to a generic message when omitted. */
+  description?: string;
+  /**
+   * Restricts both the "create an account" role dropdown and the account
+   * list/filter to this set of roles — e.g. the Ops "Admin Accounts" page
+   * only ever needs Operations Admin + Event Manager, and the Finance
+   * "Finance Accounts" page only needs Finance Admin/Operator/Auditor.
+   * A Super Admin's `GET /roles/assignable` response still returns every
+   * role they're allowed to grant (backend-enforced, unchanged) — this
+   * prop only narrows what that superset renders on *this* page, so each
+   * section stays focused on its own accounts instead of mixing Finance
+   * and Operations staff in one list. Omit for the original unscoped
+   * behavior (every assignable role, every manageable account).
+   */
+  roleScope?: RoleName[];
+}
+
 /** Account provisioning and server-authorized disable/reactivate actions.
  * Scoped managers see only volunteers they may manage; global administrators
  * retain their provisioning workflow. */
-export function AccountManagementPage() {
+export function AccountManagementPage({ title = "Account Management", description, roleScope }: AccountManagementPageProps = {}) {
   const queryClient = useQueryClient();
   const roles = useSessionStore((s) => s.roles);
   const canProvision = roles.global.some(role => ["super_admin", "operations_admin", "finance_admin"].includes(role));
@@ -75,7 +95,7 @@ export function AccountManagementPage() {
   const [page, setPage] = useState(1);
 
   const {
-    data: roleOptions = [],
+    data: allRoleOptions = [],
     isLoading: rolesLoading,
     isError: rolesError,
   } = useQuery({
@@ -83,6 +103,14 @@ export function AccountManagementPage() {
     queryFn: listAssignableRoles,
     enabled: canProvision,
   });
+  // Backend-authorized superset, narrowed to this page's section. Assigning
+  // a role outside `roleScope` was never possible from here to begin with
+  // (the dropdown simply never listed it) — this doesn't change what the
+  // backend allows, only what one page chooses to surface.
+  const roleOptions = useMemo(
+    () => (roleScope ? allRoleOptions.filter((role) => roleScope.includes(role.name)) : allRoleOptions),
+    [allRoleOptions, roleScope],
+  );
 
   const {
     data: accountPage,
@@ -167,9 +195,25 @@ export function AccountManagementPage() {
   const roleOptionsLoaded = roleOptions.length > 0;
   const createEnabled = roleOptionsLoaded && !rolesLoading;
 
+  // Accounts whose only active roles fall outside this page's section
+  // (e.g. a Finance Operator showing up on the Ops Admin Accounts page)
+  // are dropped before search/role filtering — each section only ever
+  // needs to see its own staff. An account with no admin role yet (a
+  // regular app user) is dropped the same way; it was never something
+  // either section's list was useful for. Omit `roleScope` to keep the
+  // original unfiltered "every manageable account" behavior.
+  const inScopeAccounts = useMemo(() => {
+    if (!roleScope) return accounts;
+    return accounts.filter((account) => {
+      const activeRoleNames = account.roles.filter((r) => r.status === "active").map((r) => r.role_name);
+      if (account.is_event_manager) activeRoleNames.push("event_manager");
+      return activeRoleNames.some((role) => roleScope.includes(role as RoleName));
+    });
+  }, [accounts, roleScope]);
+
   const sortedAccounts = useMemo(
-    () => [...accounts].sort((a, b) => Number(b.is_active) - Number(a.is_active) || (a.mobile_number ?? a.email ?? a.id).localeCompare(b.mobile_number ?? b.email ?? b.id)),
-    [accounts],
+    () => [...inScopeAccounts].sort((a, b) => Number(b.is_active) - Number(a.is_active) || (a.mobile_number ?? a.email ?? a.id).localeCompare(b.mobile_number ?? b.email ?? b.id)),
+    [inScopeAccounts],
   );
 
   const filteredAccounts = useMemo(() => {
@@ -185,9 +229,14 @@ export function AccountManagementPage() {
   }, [sortedAccounts, search, roleFilter]);
   const isFiltered = search.trim() !== "" || roleFilter !== "all";
 
+  const createDescription = description
+    ?? (roleScope && roleOptions.length > 0
+      ? `Create ${roleOptions.map((role) => roleLabel(role.name)).join(", ")} accounts.`
+      : "Role options come from the backend and follow your permission scope.");
+
   return (
     <div>
-      <Header title="Account Management" />
+      <Header title={title} />
 
       <div className={canProvision ? "grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.35fr]" : "grid grid-cols-1 gap-4"}>
         {canProvision && <GlassPanel className="rise-in h-fit">
@@ -198,11 +247,12 @@ export function AccountManagementPage() {
             <div>
               <h2 className="text-sm font-semibold text-[var(--foreground)]">Create an account</h2>
               <p className="text-xs text-[var(--foreground-muted)]">
-                Role options come from the backend and follow your permission scope.
+                {createDescription}
               </p>
             </div>
           </div>
 
+          {roleOptionsLoaded || rolesLoading ? (
           <form onSubmit={handleSubmit((values) => provision.mutate(values))} className="space-y-3.5">
             <Controller
               control={control}
@@ -255,6 +305,11 @@ export function AccountManagementPage() {
               Create account
             </Button>
           </form>
+          ) : (
+            <p className="text-xs text-[var(--foreground-subtle)]">
+              You don&apos;t have permission to create any of this section&apos;s account types.
+            </p>
+          )}
 
           {rolesError && (
             <p className="mt-3 text-xs text-[var(--danger)]">Could not load role options. Try refreshing.</p>

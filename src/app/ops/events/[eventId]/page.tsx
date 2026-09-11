@@ -156,7 +156,15 @@ export default function EventDetailPage({
       ) : (
         <>
           <Header title={event.name} />
-          <EventManagerPanel eventId={event.id} currentManagerId={event.organizer_user_id} />
+          <EventManagerPanel
+            eventId={event.id}
+            currentManagerId={event.organizer_user_id}
+            currentManager={event.organizer ? {
+              name: event.organizer.name,
+              mobileNumber: event.organizer.mobile_number,
+              email: event.organizer.email,
+            } : null}
+          />
 
           <GlassPanel className="rise-in mb-4">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(240px,300px)_1fr]">

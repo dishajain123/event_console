@@ -32,7 +32,11 @@ export function Header({ title }: { title: string }) {
     (roles.scopedEventManagerEventIds.length > 0 ? "Event Manager" : "");
 
   return (
-    <header className="fade-in sticky top-4 z-10 mb-5 flex items-center justify-between">
+    <header
+      className="fade-in sticky top-4 z-20 -mx-2 mb-5 flex items-center justify-between rounded-[var(--radius-md)]
+        bg-[var(--background)]/90 px-2 py-2 backdrop-blur-md
+        supports-[backdrop-filter]:bg-[var(--background)]/75"
+    >
       <h1 className="text-lg font-semibold tracking-tight text-[var(--foreground)]">{title}</h1>
 
       <Popover

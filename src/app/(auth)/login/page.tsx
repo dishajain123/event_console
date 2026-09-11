@@ -2,7 +2,7 @@
 
 import { useState, useRef, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
+import { ShieldCheck, ArrowRight, Loader2, Smartphone, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GlassPanel } from "@/components/ui/glass-panel";
@@ -12,9 +12,52 @@ import { getPostLoginRedirect } from "@/lib/rbac";
 import { requestPasswordReset, resetPassword } from "@/api/identity";
 import type { ApiError } from "@/api/client";
 import { formatIndianMobileDisplay, normalizeIndianMobileNumber } from "@/lib/phone";
+import { cn } from "@/lib/utils";
 
 type Step = "mobile" | "otp";
 type Method = "mobile" | "email";
+
+/**
+ * The Mobile/Email switch — a sliding capsule indicator rather than a
+ * per-button background swap, so choosing a method reads as one motion.
+ * Same visual language (icon + label, sliding white capsule on a muted
+ * track) as the mobile app's redesigned auth screen, expressed through
+ * this app's own design tokens.
+ */
+function MethodSwitch({ method, onChange }: { method: Method; onChange: (method: Method) => void }) {
+  return (
+    <div className="relative grid grid-cols-2 rounded-[var(--radius-md)] bg-[var(--surface-muted)] p-1">
+      <div
+        aria-hidden
+        className="absolute top-1 bottom-1 rounded-[var(--radius-sm)] bg-[var(--surface)] shadow-sm shadow-black/5 transition-transform duration-200 ease-out"
+        style={{
+          left: 4,
+          width: "calc(50% - 4px)",
+          transform: method === "email" ? "translateX(calc(100% + 4px))" : "translateX(0)",
+        }}
+      />
+      {(
+        [
+          { key: "mobile" as const, label: "Mobile", icon: Smartphone },
+          { key: "email" as const, label: "Email", icon: Mail },
+        ]
+      ).map(({ key, label, icon: Icon }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => onChange(key)}
+          className={cn(
+            "relative z-10 flex items-center justify-center gap-1.5 rounded-[var(--radius-sm)] py-2 text-sm font-semibold transition-colors",
+            method === key ? "text-[var(--accent-strong)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]",
+          )}
+        >
+          <Icon className="h-4 w-4" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,6 +68,7 @@ export default function LoginPage() {
   const [method, setMethod] = useState<Method>("mobile");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [recovery, setRecovery] = useState(false);
   const [recoverySent, setRecoverySent] = useState(false);
   const [recoveryCode, setRecoveryCode] = useState("");
@@ -126,22 +170,53 @@ export default function LoginPage() {
         <GlassPanel strong className="rise-in p-8">
           {step === "mobile" ? (
             <form onSubmit={handleRequestOtp} className="space-y-5">
-              <div className="grid grid-cols-2 gap-2 rounded-lg bg-black/5 p-1 text-sm">
-                <button type="button" className={`rounded-md px-3 py-2 ${method === "mobile" ? "bg-white shadow" : ""}`} onClick={() => { setMethod("mobile"); setError(null); }}>Mobile + OTP</button>
-                <button type="button" className={`rounded-md px-3 py-2 ${method === "email" ? "bg-white shadow" : ""}`} onClick={() => { setMethod("email"); setError(null); }}>Email + password</button>
-              </div>
+              <MethodSwitch method={method} onChange={(next) => { setMethod(next); setError(null); }} />
               {method === "mobile" ? <MobileNumberField
                 id="mobile" label="Mobile number" value={mobileNumber} onChange={setMobileNumber}
                 autoFocus error={!!error} errorMessage={error} placeholder="98765 43210"
-              /> : <>
-                <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                <Input id="password" type="password" placeholder={recovery ? "New password" : "Password"} value={password} onChange={(e) => setPassword(e.target.value)} required={!recovery || recoverySent} />
+                helperText="We'll text a one-time code to verify it's you."
+              /> : <div className="space-y-4">
+                <div>
+                  <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                    Email address
+                  </label>
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--foreground-subtle)]" />
+                    <Input
+                      id="email" type="email" placeholder="you@example.com" value={email}
+                      onChange={(e) => setEmail(e.target.value)} required autoFocus className="pl-9"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-[var(--foreground)]">
+                    {recovery ? "New password" : "Password"}
+                  </label>
+                  <div className="relative">
+                    <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--foreground-subtle)]" />
+                    <Input
+                      id="password" type={showPassword ? "text" : "password"}
+                      placeholder="At least 8 characters" value={password}
+                      onChange={(e) => setPassword(e.target.value)} required={!recovery || recoverySent}
+                      className="pl-9 pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      tabIndex={-1}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground-muted)]"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
                 {recovery && recoverySent && <Input id="recovery-code" placeholder="Email reset code" value={recoveryCode} onChange={(e) => setRecoveryCode(e.target.value)} required />}
                 {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
-                <button type="button" className="text-left text-xs text-[var(--accent-strong)]" onClick={() => { setRecovery(!recovery); setRecoverySent(false); setError(null); }}>
+                <button type="button" className="text-left text-xs font-medium text-[var(--accent-strong)] hover:text-[var(--accent)]" onClick={() => { setRecovery(!recovery); setRecoverySent(false); setError(null); }}>
                   {recovery ? "Back to sign in" : "Forgot password?"}
                 </button>
-              </>}
+              </div>}
               <Button type="submit" className="w-full" loading={loading} disabled={loading || (method === "mobile" ? mobileNumber.length !== 10 : !email || (recoverySent ? !recoveryCode || password.length < 8 : recovery ? false : password.length < 8))}>
                 {method === "mobile" ? "Send code" : recovery ? (recoverySent ? "Reset password" : "Send reset code") : "Sign in"}
                 {!loading && <ArrowRight className="h-4 w-4" />}

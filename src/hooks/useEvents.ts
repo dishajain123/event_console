@@ -105,10 +105,18 @@ export function useUpdateEvent(eventId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: EventUpdateIn) => updateEvent(eventId, payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: eventsQueryKeys.detail(eventId) });
       queryClient.invalidateQueries({ queryKey: ["events"] });
       queryClient.invalidateQueries({ queryKey: ["reports"] });
+      // A manager reassignment (organizer_user_id) changes who "Admin
+      // Accounts" shows as managing this event, for both the old and the
+      // new manager — without this, that page kept showing the pre-
+      // reassignment state until an unrelated refetch happened to occur.
+      if (variables.organizer_user_id !== undefined) {
+        queryClient.invalidateQueries({ queryKey: ["accounts"] });
+        queryClient.invalidateQueries({ queryKey: ["event-managers"] });
+      }
     },
   });
 }
