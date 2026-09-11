@@ -16,6 +16,28 @@ import { useSessionStore } from "@/state/sessionStore";
  * flash-redirected to /login while the refresh is still in flight.
  */
 export function useBootstrapSession() {
+  const sessionUserId = useSessionStore(s => s.user?.id);
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!sessionUserId) return;
+    let cancelled = false;
+    let revision = 0;
+    const refresh = async () => {
+      const request = ++revision;
+      try {
+        const [user, assignments] = await Promise.all([getMe(), listMyRoleAssignments()]);
+        if (cancelled || request !== revision || useSessionStore.getState().user?.id !== sessionUserId) return;
+        useSessionStore.getState().setUser(user);
+        useSessionStore.getState().setRoleAssignments(assignments);
+        await queryClient.invalidateQueries();
+      } catch { /* The API interceptor handles expired/deactivated sessions. Retry on reconnect/focus. */ }
+    };
+    const source = new EventSource("/api/backend/discovery/changes");
+    source.addEventListener("changed", refresh);
+    window.addEventListener("focus", refresh);
+    return () => { cancelled = true; source.close(); window.removeEventListener("focus", refresh); };
+  }, [sessionUserId, queryClient]);
+
   const { setAccessToken, setUser, setRoleAssignments, clearSession, setHydrated, hydrated } =
     useSessionStore();
 

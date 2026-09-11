@@ -11,7 +11,6 @@ export const STAFF_ASSIGNMENT_STATUS_LABELS: Record<StaffAssignmentStatus, strin
 
 /** Deprecated staff UI now only exposes Event Manager. */
 export const STAFF_ROLE_OPTIONS: { value: RoleName; label: string }[] = [
-  { value: "event_manager", label: "Event Manager" },
 ];
 
 export interface StaffAssignmentOut {

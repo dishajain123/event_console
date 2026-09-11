@@ -1,5 +1,4 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
-import { env } from "@/config/env";
 import { useSessionStore } from "@/state/sessionStore";
 
 /**
@@ -10,7 +9,8 @@ import { useSessionStore } from "@/state/sessionStore";
  * through the same normalization path in api/*.ts callers.
  */
 export const apiClient: AxiosInstance = axios.create({
-  baseURL: env.apiBaseUrl,
+  // Same-origin proxy keeps LAN clients on the console server's backend.
+  baseURL: "/api/backend",
   timeout: 10000,
   headers: { "Content-Type": "application/json" },
 });
@@ -52,6 +52,10 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined;
 
+    if (error.response?.data?.error_code === "account_disabled") {
+      useSessionStore.getState().clearSession();
+      return Promise.reject(normalizeApiError(error));
+    }
     if (error.response?.status === 401 && originalRequest && !originalRequest._retried) {
       originalRequest._retried = true;
       const newToken = await refreshAccessToken();

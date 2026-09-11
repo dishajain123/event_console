@@ -141,7 +141,10 @@ export default function VolunteersPage() {
                         Reject
                       </Button>
                     )}
-                    {item.status === "approved" && !item.activated_staff_assignment_id && (
+                    {item.status === "approved" && item.application_type === "event_manager" && (
+                      <span className="text-sm">An admin must designate this account in Admin Accounts, then select it in the event’s manager settings.</span>
+                    )}
+                    {item.status === "approved" && item.application_type !== "event_manager" && !item.activated_staff_assignment_id && (
                       <Button size="sm" onClick={() => activateApplication(item.id)}>
                         Activate volunteer
                       </Button>

@@ -18,6 +18,7 @@ export interface EventTemplatePage {
 }
 
 export interface EventTemplateDateInput {
+  organizer_user_id?: string;
   name: string;
   start_date: string;
   end_date: string;

@@ -23,7 +23,7 @@ Set the backend URL in `.env.local`:
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8001/api/v1
 ```
 
-Use the actual reachable backend URL when the backend runs on another machine or port. Do not put secrets in `NEXT_PUBLIC_*` variables.
+The backend URL must be reachable from the console server. Browser API requests use the same-origin `/api/backend` proxy, so accessing the console over a LAN address does not send requests to the viewing device’s localhost. `API_BASE_URL` is also supported and takes precedence over `NEXT_PUBLIC_API_BASE_URL`; authentication routes and the proxy use the same setting. Restart the development server (or rebuild production) after changing the URL. Do not put secrets in `NEXT_PUBLIC_*` variables.
 
 ## Run Locally
 
@@ -113,3 +113,13 @@ npm run build
 ```
 
 Then manually verify login, role-based navigation, event-scoped filtering, registration/payment/ticket/check-in views, refunds, feedback, sponsorships, and volunteer management against a running backend.
+
+Event-list and API-proxy regression checks: `node --test tests/events-page.test.cjs`.
+
+### Event Manager accounts
+
+Operations/Super Admin creates or designates an Event Manager through Admin Accounts before event creation. Designation makes an active account selectable; it does not grant global event access. Event creation saves the selected manager assignment in the same backend transaction. Organizer continues to use that same account.
+
+Admins can reassign an event from its detail page. Previous manager access to that event is revoked; other assignments remain. Deactivated accounts are excluded from selection, and Admin Accounts lists their events requiring reassignment. Category cascade deletion revokes the deleted events’ assignments while retaining manager accounts. Admin duplicate/template creation also requires selecting a manager.
+
+Deploy backend migration `d5e6f7a8b9c0` (`venv/bin/alembic upgrade head`) before this console version. Existing active event-scoped managers are backfilled as eligible accounts.

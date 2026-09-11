@@ -19,6 +19,7 @@ export interface UserOut {
   email: string | null;
   email_verified_at?: string | null;
   is_active: boolean;
+  status?: "ACTIVE" | "DISABLED";
 }
 
 export interface AccountRoleOut {
@@ -33,9 +34,14 @@ export interface AccountOut {
   name: string | null;
   email: string | null;
   is_active: boolean;
+  status?: "ACTIVE" | "DISABLED";
+  is_event_manager: boolean;
+  can_manage_status: boolean;
+  managed_events: { id: string; name: string }[];
   roles: AccountRoleOut[];
 }
 
 export interface AccountStatusUpdateIn {
   is_active: boolean;
+  status?: "ACTIVE" | "DISABLED";
 }

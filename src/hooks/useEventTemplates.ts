@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { archiveEventTemplate, createEventFromTemplate, createEventTemplate, deleteEventTemplate, duplicateEvent, listEventTemplates, updateEventTemplate } from "@/api/eventTemplates";
+import type { EventTemplateDateInput } from "@/types/eventTemplates";
 import { useSessionStore } from "@/state/sessionStore";
 
 function useReady() {
@@ -38,10 +39,10 @@ export function useDeleteEventTemplate() {
 
 export function useCreateEventFromTemplate() {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ templateId, payload }: { templateId: string; payload: { name: string; start_date: string; end_date: string } }) => createEventFromTemplate(templateId, payload), onSuccess: () => invalidateTemplates(queryClient) });
+  return useMutation({ mutationFn: ({ templateId, payload }: { templateId: string; payload: EventTemplateDateInput }) => createEventFromTemplate(templateId, payload), onSuccess: () => invalidateTemplates(queryClient) });
 }
 
 export function useDuplicateEvent() {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ eventId, payload }: { eventId: string; payload: { name: string; start_date: string; end_date: string } }) => duplicateEvent(eventId, payload), onSuccess: () => invalidateTemplates(queryClient) });
+  return useMutation({ mutationFn: ({ eventId, payload }: { eventId: string; payload: EventTemplateDateInput }) => duplicateEvent(eventId, payload), onSuccess: () => invalidateTemplates(queryClient) });
 }

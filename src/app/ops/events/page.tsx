@@ -1,55 +1,22 @@
 "use client";
 
-import { use, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Settings2,
-  BarChart3,
-  CalendarDays,
-  Layers3,
-  ClipboardList,
-  ListOrdered,
-  Users2,
-  Radio,
-  Building2,
-  MessageSquare,
-  Ticket,
-  Trophy,
-  LineChart,
-  Copy,
-} from "lucide-react";
+import { CalendarDays, Layers3, Plus, Search } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CardSkeleton } from "@/components/shared/skeleton";
-import { ErrorState } from "@/components/shared/states";
-import { EventStatusStepper } from "@/components/events/event-status-stepper";
-import { VenuesPanel, SchedulePanel } from "@/components/events/venue-schedule-panels";
-import { useEvent } from "@/hooks/useEvents";
-import { useDuplicateEvent } from "@/hooks/useEventTemplates";
+import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
+import { Badge } from "@/components/ui/badge";
+import { TableSkeleton } from "@/components/shared/skeleton";
+import { EmptyState, ErrorState } from "@/components/shared/states";
+import { CreateEventDialog } from "@/components/events/create-event-dialog";
+import { EventImagePlaceholder } from "@/components/events/event-image-placeholder";
+import { useEventsPage } from "@/hooks/useEvents";
+import { useMainCategories, useSubCategories } from "@/hooks/useEventCategories";
 import { EVENT_STATUS_LABELS, type EventStatus } from "@/types/events";
-import type { LucideIcon } from "lucide-react";
-
-function formatDateTime(value: string | null | undefined): string {
-  if (!value) return "—";
-  return new Date(value).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function formatList(value: string[] | undefined | null): string {
-  if (!value || value.length === 0) return "—";
-  return value.join(", ");
-}
 
 const STATUS_TONE: Record<EventStatus, "neutral" | "accent" | "success" | "warning" | "info"> = {
   draft: "neutral",
@@ -62,257 +29,200 @@ const STATUS_TONE: Record<EventStatus, "neutral" | "accent" | "success" | "warni
   archived: "neutral",
 };
 
-/** Every href below is unchanged from before — same 11 destinations. */
-function manageActions(eventId: string): { label: string; href: string; icon: LucideIcon }[] {
-  return [
-    { label: "Registrations", href: `/ops/events/${eventId}/registrations`, icon: ClipboardList },
-    { label: "Waitlist", href: `/ops/events/${eventId}/waitlist`, icon: ListOrdered },
-    { label: "Ticket access", href: `/ops/events/${eventId}/access`, icon: Ticket },
-    { label: "Teams", href: `/ops/events/${eventId}/teams`, icon: Users2 },
-    { label: "Competitions", href: `/ops/events/${eventId}/competitions`, icon: Trophy },
-    { label: "Day-of Operations", href: `/ops/events/${eventId}/operations`, icon: Radio },
-    { label: "Attendance Analytics", href: `/ops/events/${eventId}/attendance`, icon: BarChart3 },
-    { label: "Configuration Builder", href: `/ops/events/${eventId}/configure`, icon: Settings2 },
-    { label: "Event Reports", href: `/ops/events/${eventId}/reports`, icon: BarChart3 },
-    { label: "Advanced Analytics", href: `/ops/events/${eventId}/analytics`, icon: LineChart },
-    { label: "Feedback", href: `/ops/events/${eventId}/feedback`, icon: MessageSquare },
-  ];
-}
-
-function ManageActionTile({ label, href, icon: Icon }: { label: string; href: string; icon: LucideIcon }) {
+function EventThumb({ id, imageUrl }: { id: string; imageUrl: string | null }) {
+  const [broken, setBroken] = useState(false);
+  const cls = "h-10 w-[72px] shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border)]";
+  if (!imageUrl || broken) {
+    return <EventImagePlaceholder seed={id} className={cls} iconClassName="h-4 w-4" />;
+  }
   return (
-    <Link
-      href={href}
-      className="group flex items-center gap-2.5 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm font-medium text-[var(--foreground)] transition-colors hover:border-[var(--accent)]/30 hover:bg-[var(--accent-soft)]"
-    >
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--accent-soft)] text-[var(--accent-strong)] group-hover:bg-white">
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[var(--foreground-subtle)] opacity-0 transition-opacity group-hover:opacity-100" />
-    </Link>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={imageUrl}
+      alt=""
+      loading="lazy"
+      width={72}
+      height={40}
+      className={`${cls} object-cover`}
+      onError={() => setBroken(true)}
+    />
   );
 }
 
-/**
- * Same `useEvent` hook and the same `useDuplicateEvent` mutation
- * (identical payload shape) as before — every sub-page link below
- * points at the exact same href it did before. This is a structural
- * redesign only:
- *
- * - The identity/status/lifecycle card is now full-width instead of
- *   sharing a row with the management panel, so the stepper has room
- *   to breathe instead of being squeezed into a 2fr column.
- * - "Manage this event" is a compact grid of action tiles instead of
- *   11 full-width outline buttons stacked in a narrow right-hand
- *   column — it now sits naturally in the page's main flow.
- * - Duplicate-event and Organizer, which used to live inside that same
- *   cramped column, are now their own two-column row.
- */
-export default function EventDetailPage({
-  params,
-}: {
-  params: Promise<{ eventId: string }>;
-}) {
-  const { eventId } = use(params);
-  const router = useRouter();
-  const { data: event, isLoading, isError, refetch } = useEvent(eventId);
-  const duplicate = useDuplicateEvent();
-  const [duplicateForm, setDuplicateForm] = useState({ name: "", start_date: "", end_date: "" });
+export default function EventsPage() {
+  const { data: mainCategories } = useMainCategories();
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<EventStatus | "all">("all");
+  const [mainCategoryFilter, setMainCategoryFilter] = useState<string>("all");
+  const [subCategoryFilter, setSubCategoryFilter] = useState<string>("all");
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const selectedMainCategoryId = mainCategoryFilter === "all" ? undefined : mainCategoryFilter;
+  const { data: subCategories } = useSubCategories(selectedMainCategoryId);
+  const { data, isPending, isError, error, refetch } = useEventsPage({
+    page,
+    pageSize: 25,
+    mainCategoryId: selectedMainCategoryId,
+    subCategoryId: subCategoryFilter === "all" ? undefined : subCategoryFilter,
+    search,
+    status: statusFilter === "all" ? undefined : statusFilter,
+  });
+
+  // Category/status/search filters are sent to the backend. Do not apply a
+  // second client-side filter to a paginated response.
+  const filtered = data?.items ?? [];
+  const hasFilters = !!search || statusFilter !== "all" || mainCategoryFilter !== "all";
 
   return (
     <div>
-      <div className="fade-in mb-4 flex items-center justify-between">
-        <Link
-          href="/ops/events"
-          className="flex items-center gap-1.5 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+      <Header title="Events" />
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[220px] flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--foreground-subtle)]" />
+          <Input
+            placeholder="Search by name or category…"
+            className="pl-10"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          />
+        </div>
+        <Select
+          className="w-52"
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value as EventStatus | "all"); setPage(1); }}
         >
-          <ArrowLeft className="h-4 w-4" />
-          All events
+          <option value="all">All statuses</option>
+          {Object.entries(EVENT_STATUS_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </Select>
+        <Select
+          className="w-52"
+          value={mainCategoryFilter}
+          onChange={(e) => {
+            setPage(1);
+            setMainCategoryFilter(e.target.value);
+            setSubCategoryFilter("all");
+          }}
+        >
+          <option value="all">All main categories</option>
+          {mainCategories?.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </Select>
+        <Select
+          className="w-52"
+          value={subCategoryFilter}
+          onChange={(e) => { setSubCategoryFilter(e.target.value); setPage(1); }}
+          disabled={!selectedMainCategoryId}
+        >
+          <option value="all">{selectedMainCategoryId ? "All sub categories" : "Choose a main category"}</option>
+          {subCategories?.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </Select>
+        <Button onClick={() => setDialogOpen(true)}>
+          <Plus className="h-4 w-4" />
+          New event
+        </Button>
+        <Link href="/ops/categories">
+          <Button variant="outline">
+            <Layers3 className="h-4 w-4" />
+            Manage categories
+          </Button>
         </Link>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-4">
-          <CardSkeleton />
-          <CardSkeleton />
-        </div>
-      ) : isError || !event ? (
-        <ErrorState
-          title="Couldn't load this event"
-          description="It may have been removed, or the backend is unreachable."
-          onRetry={() => refetch()}
-        />
-      ) : (
-        <>
-          <Header title={event.name} />
-
-          <GlassPanel className="rise-in mb-4">
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <Badge tone={STATUS_TONE[event.status]}>{EVENT_STATUS_LABELS[event.status]}</Badge>
-              {(event.main_category || event.sub_category || event.category) && (
-                <span className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]">
-                  <Layers3 className="h-3.5 w-3.5" />
-                  {event.main_category?.name || event.category || "—"}
-                  {event.sub_category?.name && (
-                    <span className="text-[var(--foreground-subtle)]">/ {event.sub_category.name}</span>
-                  )}
-                </span>
-              )}
-              <span className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]">
-                <CalendarDays className="h-3.5 w-3.5" />
-                {new Date(event.start_date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-                {" – "}
-                {new Date(event.end_date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-              </span>
-            </div>
-
-            {event.description && <p className="mb-4 text-sm text-[var(--foreground-muted)]">{event.description}</p>}
-
-            <EventStatusStepper eventId={event.id} status={event.status} />
-          </GlassPanel>
-
-          <GlassPanel className="rise-in mb-4">
-            <h2 className="mb-3 text-sm font-semibold text-[var(--foreground)]">Manage this event</h2>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {manageActions(event.id).map((action) => (
-                <ManageActionTile key={action.href} {...action} />
+      <GlassPanel padded={false}>
+        {isPending ? (
+          <div className="p-6">
+            <TableSkeleton rows={5} cols={4} />
+          </div>
+        ) : isError ? (
+          <div className="p-6">
+            <ErrorState onRetry={() => refetch()} title="Couldn't load events" description={error?.message ?? "Check the backend connection and try again."} />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="p-6">
+            <EmptyState
+              icon={CalendarDays}
+              title={hasFilters ? "No events match your filters" : "No events yet"}
+              description={
+                hasFilters
+                  ? "Try a different search term or status filter."
+                  : "Create your first event to start configuring it."
+              }
+              action={!hasFilters ? { label: "Create event", onClick: () => setDialogOpen(true) } : undefined}
+            />
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-black/[0.06] text-left text-xs text-[var(--foreground-muted)]">
+                <th className="px-6 py-3 font-medium">Event</th>
+                <th className="px-6 py-3 font-medium">Category</th>
+                <th className="px-6 py-3 font-medium">Organizer</th>
+                <th className="px-6 py-3 font-medium">Dates</th>
+                <th className="px-6 py-3 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black/[0.05]">
+              {filtered.map((event) => (
+                <tr key={event.id} className="transition-colors hover:bg-black/[0.02]">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <EventThumb id={event.id} imageUrl={event.image_url} />
+                      <Link
+                        href={`/ops/events/${event.id}`}
+                        className="font-medium text-[var(--foreground)] hover:text-[var(--accent-strong)]"
+                      >
+                        {event.name}
+                      </Link>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-[var(--foreground-muted)]">
+                    {event.main_category?.name || event.sub_category?.name || event.category || "—"}
+                    {event.main_category?.name && event.sub_category?.name && (
+                      <span className="ml-2 text-xs text-[var(--foreground-subtle)]">
+                        {event.main_category.name} / {event.sub_category.name}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-[var(--foreground-muted)]">
+                    {event.organizer?.name || event.organizer?.mobile_number || "—"}
+                  </td>
+                  <td className="px-6 py-4 text-[var(--foreground-muted)]">
+                    {new Date(event.start_date).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                    {" – "}
+                    {new Date(event.end_date).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </td>
+                  <td className="px-6 py-4">
+                    <Badge tone={STATUS_TONE[event.status]}>{EVENT_STATUS_LABELS[event.status]}</Badge>
+                  </td>
+                </tr>
               ))}
-            </div>
-          </GlassPanel>
+            </tbody>
+          </table>
+        )}
+        <Pagination page={page} totalPages={Math.max(1, Math.ceil((data?.total ?? 0) / 25))} totalItems={data?.total} onPageChange={setPage} />
+      </GlassPanel>
 
-          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <GlassPanel className="rise-in">
-              <div className="mb-2 flex items-center gap-2 text-[var(--foreground)]">
-                <Building2 className="h-4 w-4" />
-                <span className="text-sm font-semibold">Organizer</span>
-              </div>
-              <p className="text-sm text-[var(--foreground)]">{event.organizer?.name ?? "Unassigned"}</p>
-              <p className="text-sm text-[var(--foreground-muted)]">{event.organizer?.mobile_number ?? "No mobile number"}</p>
-            </GlassPanel>
-
-            <GlassPanel className="rise-in">
-              <div className="mb-2 flex items-center gap-2 text-[var(--foreground)]">
-                <Copy className="h-4 w-4" />
-                <span className="text-sm font-semibold">Duplicate event</span>
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <Input
-                  className="sm:col-span-1"
-                  placeholder="New event name"
-                  value={duplicateForm.name}
-                  onChange={(input) => setDuplicateForm((value) => ({ ...value, name: input.target.value }))}
-                />
-                <Input
-                  type="datetime-local"
-                  value={duplicateForm.start_date}
-                  onChange={(input) => setDuplicateForm((value) => ({ ...value, start_date: input.target.value }))}
-                />
-                <Input
-                  type="datetime-local"
-                  value={duplicateForm.end_date}
-                  onChange={(input) => setDuplicateForm((value) => ({ ...value, end_date: input.target.value }))}
-                />
-              </div>
-              <Button
-                className="mt-2 w-full"
-                size="sm"
-                loading={duplicate.isPending}
-                disabled={!duplicateForm.name || !duplicateForm.start_date || !duplicateForm.end_date}
-                onClick={async () => {
-                  const created = await duplicate.mutateAsync({
-                    eventId,
-                    payload: {
-                      name: duplicateForm.name,
-                      start_date: new Date(duplicateForm.start_date).toISOString(),
-                      end_date: new Date(duplicateForm.end_date).toISOString(),
-                    },
-                  });
-                  router.push(`/ops/events/${created.id}`);
-                }}
-              >
-                Duplicate event
-              </Button>
-              <p className="mt-2 text-[11px] text-[var(--foreground-subtle)]">
-                Configuration is copied; registrations, payments, tickets, attendance, check-ins and history are not.
-              </p>
-            </GlassPanel>
-          </div>
-
-          <div className="mb-4">
-            <GlassPanel>
-              <h2 className="mb-4 text-sm font-semibold text-[var(--foreground)]">Event details</h2>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <div>
-                  <p className="text-xs text-[var(--foreground-subtle)]">Registration window</p>
-                  <p className="text-sm text-[var(--foreground)]">
-                    {formatDateTime(event.configuration?.details?.registration_start_at)} to{" "}
-                    {formatDateTime(event.configuration?.details?.registration_end_at)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--foreground-subtle)]">Event window</p>
-                  <p className="text-sm text-[var(--foreground)]">
-                    {formatDateTime(event.configuration?.details?.event_start_at)} to{" "}
-                    {formatDateTime(event.configuration?.details?.event_end_at)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--foreground-subtle)]">Venue</p>
-                  <p className="text-sm text-[var(--foreground)]">{event.configuration?.details?.venue_name ?? "—"}</p>
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    {event.configuration?.details?.venue_address ?? event.configuration?.details?.venue_location ?? "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--foreground-subtle)]">Eligibility</p>
-                  <p className="text-sm text-[var(--foreground)]">{event.configuration?.details?.age_group ?? "—"}</p>
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Min {event.configuration?.details?.age_min ?? "—"} / Max {event.configuration?.details?.age_max ?? "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--foreground-subtle)]">Capacity</p>
-                  <p className="text-sm text-[var(--foreground)]">
-                    {event.configuration?.details?.minimum_participants ?? "—"} to{" "}
-                    {event.configuration?.details?.maximum_participants ?? "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--foreground-subtle)]">Event type</p>
-                  <p className="text-sm text-[var(--foreground)]">{event.configuration?.details?.event_type ?? "—"}</p>
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Team size {event.configuration?.details?.team_size_min ?? "—"} to{" "}
-                    {event.configuration?.details?.team_size_max ?? "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--foreground-subtle)]">Gender eligibility</p>
-                  <p className="text-sm text-[var(--foreground)]">{event.configuration?.details?.gender_eligibility ?? "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--foreground-subtle)]">Required documents</p>
-                  <p className="text-sm text-[var(--foreground)]">{formatList(event.configuration?.details?.required_documents)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--foreground-subtle)]">Contact</p>
-                  <p className="text-sm text-[var(--foreground)]">{event.configuration?.details?.contact_name ?? "—"}</p>
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    {event.configuration?.details?.contact_email ?? "—"}
-                    {" · "}
-                    {event.configuration?.details?.contact_phone ?? "—"}
-                  </p>
-                </div>
-              </div>
-            </GlassPanel>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <VenuesPanel eventId={event.id} />
-            <SchedulePanel eventId={event.id} />
-          </div>
-        </>
-      )}
+      <CreateEventDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
     </div>
   );
 }

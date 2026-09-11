@@ -54,6 +54,24 @@ export async function updateEvent(eventId: string, payload: EventUpdateIn): Prom
   return data;
 }
 
+export async function setEventImage(eventId: string, file: File): Promise<EventOut> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.put<EventOut>(`/events/${eventId}/image`, form, {
+    // Let the browser set multipart/form-data with its boundary — forcing the
+    // header here would drop the boundary and corrupt the upload.
+    headers: { "Content-Type": null },
+    // Image uploads (up to 5 MB) can outlast the default 10s API timeout.
+    timeout: 60000,
+  });
+  return data;
+}
+
+export async function removeEventImage(eventId: string): Promise<EventOut> {
+  const { data } = await apiClient.delete<EventOut>(`/events/${eventId}/image`);
+  return data;
+}
+
 export async function publishEvent(eventId: string): Promise<EventOut> {
   const { data } = await apiClient.post<EventOut>(`/events/${eventId}/publish`);
   return data;

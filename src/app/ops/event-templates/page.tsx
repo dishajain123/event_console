@@ -1,6 +1,8 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
+import { EventManagerPicker } from "@/components/events/event-manager-picker";
+import { useSessionStore } from "@/state/sessionStore";
 import { useState } from "react";
 import { Archive, Copy, FileStack, Search, Trash2 } from "lucide-react";
 import { Header } from "@/components/layout/header";
@@ -18,6 +20,9 @@ const PAGE_SIZE = 25;
 /** Same hooks and mutation payloads as before (create template, create event from template, archive, delete). */
 export default function EventTemplatesPage() {
   const router = useRouter();
+  const globalRoles = useSessionStore(state => state.roles.global);
+  const canAssignManager = globalRoles.some(role => role === "super_admin" || role === "operations_admin");
+  const [managerId, setManagerId] = useState("");
   const params = useSearchParams();
   const sourceFromUrl = params.get("source_event_id") ?? "";
   const [page, setPage] = useState(1);
@@ -39,16 +44,19 @@ export default function EventTemplatesPage() {
   }
 
   async function handleCreateEvent(templateId: string) {
-    if (!newEvent.name || !newEvent.start_date || !newEvent.end_date) return;
+    if (!newEvent.name || !newEvent.start_date || !newEvent.end_date || (canAssignManager && !managerId)) return;
+    try {
     const created = await createEvent.mutateAsync({
       templateId,
       payload: {
+        organizer_user_id: canAssignManager ? managerId : undefined,
         name: newEvent.name,
         start_date: new Date(newEvent.start_date).toISOString(),
         end_date: new Date(newEvent.end_date).toISOString(),
       },
     });
     router.push(`/ops/events/${created.id}`);
+    } catch { /* Mutation error is displayed below. */ }
   }
 
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
@@ -56,6 +64,8 @@ export default function EventTemplatesPage() {
   return (
     <div>
       <Header title="Event Templates" />
+      {canAssignManager && <GlassPanel className="mb-4"><EventManagerPicker value={managerId} onChange={setManagerId} /></GlassPanel>}
+      {createEvent.isError && <p role="alert" className="text-sm text-[var(--danger)]">{createEvent.error.message}</p>}
 
       <GlassPanel className="mb-4">
         <p className="mb-3 text-sm font-semibold text-[var(--foreground)]">Create reusable template</p>
@@ -149,7 +159,7 @@ export default function EventTemplatesPage() {
                       value={newEvent.end_date}
                       onChange={(event) => setNewEvent((value) => ({ ...value, end_date: event.target.value }))}
                     />
-                    <Button size="sm" onClick={() => handleCreateEvent(template.id)} loading={createEvent.isPending}>
+                    <Button size="sm" onClick={() => handleCreateEvent(template.id)} loading={createEvent.isPending} disabled={!newEvent.name || !newEvent.start_date || !newEvent.end_date || (canAssignManager && !managerId)}>
                       Create event
                     </Button>
                   </div>

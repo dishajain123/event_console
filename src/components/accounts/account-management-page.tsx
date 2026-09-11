@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,9 +22,8 @@ import { TableSkeleton } from "@/components/shared/skeleton";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { useSessionStore } from "@/state/sessionStore";
 import { assignRole, listAssignableRoles } from "@/api/rbac";
-import { findOrCreateUserForProvisioning, listAccounts, updateAccountStatus } from "@/api/identity";
+import { designateEventManager, findOrCreateUserForProvisioning, listAccounts, updateAccountStatus } from "@/api/identity";
 import type { ApiError } from "@/api/client";
-import type { AccountOut } from "@/types/identity";
 import type { RoleName } from "@/types/rbac";
 import { formatIndianMobileDisplay, normalizeIndianMobileNumber } from "@/lib/phone";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -59,49 +59,15 @@ function roleLabel(roleName: string): string {
   }
 }
 
-function canToggleAccount(target: AccountOut, actorRoles: string[]): boolean {
-  const targetRoles = target.roles
-    .filter((assignment) => assignment.status === "active")
-    .map((assignment) => assignment.role_name);
-
-  if (targetRoles.includes("super_admin")) {
-    return actorRoles.includes("super_admin");
-  }
-
-  if (actorRoles.includes("super_admin")) {
-    return true;
-  }
-
-  if (actorRoles.includes("operations_admin")) {
-    return targetRoles.every((role) => role === "operations_admin" || role === "event_manager");
-  }
-
-  if (actorRoles.includes("finance_admin")) {
-    return targetRoles.every(
-      (role) => role === "finance_admin" || role === "finance_operator" || role === "finance_auditor",
-    );
-  }
-
-  return false;
-}
-
 const PAGE_SIZE = 100;
 
-/**
- * Every hook, mutation, and permission rule below (schema,
- * canToggleAccount, provision, statusMutation) is unchanged from
- * before. What's new: search and a role-wise filter over the accounts
- * list, plus real pagination — `listAccounts` was silently hardcoded
- * to page_size=25 with no way to see more; it now defaults to 100 and
- * exposes `page`/`total`, wired to a [Pagination] control for
- * organizations with more admin/staff accounts than that. Search and
- * the role filter apply to whichever page is currently loaded — for
- * the sizes this screen deals with (application admins and staff, not
- * end users) that's virtually always the whole list.
- */
+/** Account provisioning and server-authorized disable/reactivate actions.
+ * Scoped managers see only volunteers they may manage; global administrators
+ * retain their provisioning workflow. */
 export function AccountManagementPage() {
   const queryClient = useQueryClient();
   const roles = useSessionStore((s) => s.roles);
+  const canProvision = roles.global.some(role => ["super_admin", "operations_admin", "finance_admin"].includes(role));
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -115,6 +81,7 @@ export function AccountManagementPage() {
   } = useQuery({
     queryKey: ["assignable-roles"],
     queryFn: listAssignableRoles,
+    enabled: canProvision,
   });
 
   const {
@@ -147,8 +114,8 @@ export function AccountManagementPage() {
   const provision = useMutation({
     mutationFn: async (values: FormValues) => {
       const mobileNumber = normalizeIndianMobileNumber(values.mobileNumber);
-      const user = await findOrCreateUserForProvisioning(mobileNumber, values.name);
-      await assignRole(user.id, {
+      const user = await findOrCreateUserForProvisioning(mobileNumber, values.name, values.role === "event_manager");
+      if (values.role !== "event_manager") await assignRole(user.id, {
         user_id: user.id,
         role_name: values.role as RoleName,
         event_id: null,
@@ -157,9 +124,10 @@ export function AccountManagementPage() {
     },
     onSuccess: async ({ mobileNumber }, values) => {
       await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      await queryClient.invalidateQueries({ queryKey: ["event-managers"] });
       setFormError(null);
       toast.success("Account created", {
-        description: `${values.name || formatIndianMobileDisplay(mobileNumber)} can now sign in as ${roleLabel(values.role)}.`,
+        description: values.role === "event_manager" ? "Event Manager account is ready to be selected when creating an event." : `${values.name || formatIndianMobileDisplay(mobileNumber)} can now sign in as ${roleLabel(values.role)}.`,
       });
       reset({ mobileNumber: "", name: "", role: roleOptions[0]?.name ?? "event_manager" });
     },
@@ -170,12 +138,23 @@ export function AccountManagementPage() {
     },
   });
 
+  const designate = useMutation({
+    mutationFn: designateEventManager,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      await queryClient.invalidateQueries({ queryKey: ["event-managers"] });
+      toast.success("Account is now eligible for Event Manager assignment");
+    },
+    onError: (error: ApiError) => toast.error(error.message),
+  });
+
   const statusMutation = useMutation({
     mutationFn: async (payload: { userId: string; isActive: boolean }) =>
       updateAccountStatus(payload.userId, { is_active: payload.isActive }),
     onSuccess: async () => {
       setActionError(null);
       await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      await queryClient.invalidateQueries({ queryKey: ["event-managers"] });
       toast.success("Account updated");
     },
     onError: (error: ApiError) => {
@@ -197,6 +176,7 @@ export function AccountManagementPage() {
     const term = search.trim().toLowerCase();
     return sortedAccounts.filter((account) => {
       const activeRoleNames = account.roles.filter((r) => r.status === "active").map((r) => r.role_name);
+      if (account.is_event_manager) activeRoleNames.push("event_manager");
       if (roleFilter !== "all" && !activeRoleNames.includes(roleFilter as RoleName)) return false;
       if (!term) return true;
       const haystack = [account.name, account.mobile_number, account.email].filter(Boolean).join(" ").toLowerCase();
@@ -209,8 +189,8 @@ export function AccountManagementPage() {
     <div>
       <Header title="Account Management" />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.35fr]">
-        <GlassPanel className="rise-in h-fit">
+      <div className={canProvision ? "grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.35fr]" : "grid grid-cols-1 gap-4"}>
+        {canProvision && <GlassPanel className="rise-in h-fit">
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--accent-soft)]">
               <ShieldUser className="h-4 w-4 text-[var(--accent-strong)]" />
@@ -279,13 +259,13 @@ export function AccountManagementPage() {
           {rolesError && (
             <p className="mt-3 text-xs text-[var(--danger)]">Could not load role options. Try refreshing.</p>
           )}
-        </GlassPanel>
+        </GlassPanel>}
 
         <GlassPanel padded={false} className="rise-in">
           <div className="border-b border-[var(--border)] px-5 py-4">
             <h2 className="text-sm font-semibold text-[var(--foreground)]">All accounts</h2>
             <p className="text-xs text-[var(--foreground-muted)]">
-              One backend-driven list for Operations, Finance, and Super Admin.
+              Account visibility and available actions follow your backend permission scope.
             </p>
           </div>
 
@@ -342,8 +322,13 @@ export function AccountManagementPage() {
                 </TableHead>
                 <TableBody>
                   {filteredAccounts.map((account) => {
-                    const accountRoleNames = account.roles.filter((role) => role.status === "active").map((role) => role.role_name);
-                    const canToggle = canToggleAccount(account, roles.global);
+                    // Scoped roles can repeat across events; this column summarizes
+                    // role names, while account.roles retains every assignment.
+                    const accountRoleNames = [...new Set(
+                      [...account.roles.filter((role) => role.status === "active").map((role) => role.role_name),
+                        ...(account.is_event_manager ? ["event_manager"] : [])],
+                    )];
+                    const canToggle = account.can_manage_status;
 
                     return (
                       <TableRow key={account.id}>
@@ -365,24 +350,36 @@ export function AccountManagementPage() {
                               <span className="text-xs text-[var(--foreground-subtle)]">No roles assigned</span>
                             )}
                           </div>
+                          {(account.managed_events ?? []).map((event) => (
+                            <Link key={event.id} className="mt-1 block text-xs underline" href={`/ops/events/${event.id}`}>
+                              {event.name}{!account.is_active ? " — needs manager reassignment" : ""}
+                            </Link>
+                          ))}
                         </TableCell>
                         <TableCell>
                           <Badge tone={account.is_active ? "success" : "warning"}>
-                            {account.is_active ? "Active" : "Inactive"}
+                            {account.is_active ? "Active" : "Disabled"}
                           </Badge>
                         </TableCell>
                         <TableCell>
+                          {!account.is_event_manager && account.is_active && roles.global.some(role => role === "super_admin" || role === "operations_admin") && (
+                            <Button size="sm" variant="ghost" loading={designate.isPending}
+                              onClick={() => designate.mutate(account.id)}>Designate Event Manager</Button>
+                          )}
                           {canToggle ? (
                             <div className="flex justify-end">
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 loading={statusMutation.isPending}
-                                onClick={() =>
-                                  statusMutation.mutate({ userId: account.id, isActive: !account.is_active })
-                                }
+                                onClick={() => {
+                                  const action = account.is_active ? "Disable" : "Reactivate";
+                                  if (window.confirm(`${action} ${account.name || account.email || account.mobile_number}? ${account.is_active ? "This blocks login, console and mobile staff access, including existing sessions." : "This restores access using their existing roles."}`)) {
+                                    statusMutation.mutate({ userId: account.id, isActive: !account.is_active });
+                                  }
+                                }}
                               >
-                                {account.is_active ? "Deactivate" : "Activate"}
+                                {account.is_active ? "Disable" : "Reactivate"}
                               </Button>
                             </div>
                           ) : (

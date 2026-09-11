@@ -66,10 +66,12 @@ export async function getMe(): Promise<UserOut> {
 export async function findOrCreateUserForProvisioning(
   mobileNumber: string,
   name?: string,
+  isEventManager = false,
 ): Promise<UserOut> {
   const { data } = await apiClient.post<UserOut>("/users/find-or-create", {
     mobile_number: mobileNumber,
     name: name || undefined,
+    is_event_manager: isEventManager,
   });
   return data;
 }
@@ -94,5 +96,14 @@ export async function listAccounts(params?: { page?: number; pageSize?: number }
 
 export async function updateAccountStatus(userId: string, payload: AccountStatusUpdateIn): Promise<UserOut> {
   const { data } = await apiClient.patch<UserOut>(`/users/${userId}/status`, payload);
+  return data;
+}
+export async function listEventManagers(): Promise<UserOut[]> {
+  const { data } = await apiClient.get<UserOut[]>("/users/event-managers");
+  return data;
+}
+
+export async function designateEventManager(userId: string): Promise<UserOut> {
+  const { data } = await apiClient.post<UserOut>(`/users/${userId}/event-manager`);
   return data;
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowRight,
   Settings2,
   BarChart3,
   CalendarDays,
@@ -15,6 +16,10 @@ import {
   Radio,
   Building2,
   MessageSquare,
+  Ticket,
+  Trophy,
+  LineChart,
+  Copy,
 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
@@ -25,9 +30,14 @@ import { CardSkeleton } from "@/components/shared/skeleton";
 import { ErrorState } from "@/components/shared/states";
 import { EventStatusStepper } from "@/components/events/event-status-stepper";
 import { VenuesPanel, SchedulePanel } from "@/components/events/venue-schedule-panels";
+import { EventManagerPicker } from "@/components/events/event-manager-picker";
+import { useSessionStore } from "@/state/sessionStore";
+import { EventManagerPanel } from "@/components/events/event-manager-panel";
+import { EventImageField } from "@/components/events/event-image-field";
 import { useEvent } from "@/hooks/useEvents";
 import { useDuplicateEvent } from "@/hooks/useEventTemplates";
 import { EVENT_STATUS_LABELS, type EventStatus } from "@/types/events";
+import type { LucideIcon } from "lucide-react";
 
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—";
@@ -56,6 +66,56 @@ const STATUS_TONE: Record<EventStatus, "neutral" | "accent" | "success" | "warni
   archived: "neutral",
 };
 
+/** Every href below is unchanged from before — same 11 destinations. */
+function manageActions(eventId: string): { label: string; href: string; icon: LucideIcon }[] {
+  return [
+    { label: "Registrations", href: `/ops/events/${eventId}/registrations`, icon: ClipboardList },
+    { label: "Waitlist", href: `/ops/events/${eventId}/waitlist`, icon: ListOrdered },
+    { label: "Ticket access", href: `/ops/events/${eventId}/access`, icon: Ticket },
+    { label: "Teams", href: `/ops/events/${eventId}/teams`, icon: Users2 },
+    { label: "Competitions", href: `/ops/events/${eventId}/competitions`, icon: Trophy },
+    { label: "Day-of Operations", href: `/ops/events/${eventId}/operations`, icon: Radio },
+    { label: "Attendance Analytics", href: `/ops/events/${eventId}/attendance`, icon: BarChart3 },
+    { label: "Configuration Builder", href: `/ops/events/${eventId}/configure`, icon: Settings2 },
+    { label: "Event Reports", href: `/ops/events/${eventId}/reports`, icon: BarChart3 },
+    { label: "Advanced Analytics", href: `/ops/events/${eventId}/analytics`, icon: LineChart },
+    { label: "Certificates", href: `/ops/events/${eventId}/certificates`, icon: Ticket },
+    { label: "Live interactions", href: `/ops/events/${eventId}/interactions`, icon: MessageSquare },
+    { label: "Networking", href: `/ops/events/${eventId}/networking`, icon: Users2 },
+    { label: "Feedback", href: `/ops/events/${eventId}/feedback`, icon: MessageSquare },
+  ];
+}
+
+function ManageActionTile({ label, href, icon: Icon }: { label: string; href: string; icon: LucideIcon }) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-center gap-2.5 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm font-medium text-[var(--foreground)] transition-colors hover:border-[var(--accent)]/30 hover:bg-[var(--accent-soft)]"
+    >
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--accent-soft)] text-[var(--accent-strong)] group-hover:bg-white">
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[var(--foreground-subtle)] opacity-0 transition-opacity group-hover:opacity-100" />
+    </Link>
+  );
+}
+
+/**
+ * Same `useEvent` hook and the same `useDuplicateEvent` mutation
+ * (identical payload shape) as before — every sub-page link below
+ * points at the exact same href it did before. This is a structural
+ * redesign only:
+ *
+ * - The identity/status/lifecycle card is now full-width instead of
+ *   sharing a row with the management panel, so the stepper has room
+ *   to breathe instead of being squeezed into a 2fr column.
+ * - "Manage this event" is a compact grid of action tiles instead of
+ *   11 full-width outline buttons stacked in a narrow right-hand
+ *   column — it now sits naturally in the page's main flow.
+ * - Duplicate-event and Organizer, which used to live inside that same
+ *   cramped column, are now their own two-column row.
+ */
 export default function EventDetailPage({
   params,
 }: {
@@ -65,6 +125,9 @@ export default function EventDetailPage({
   const router = useRouter();
   const { data: event, isLoading, isError, refetch } = useEvent(eventId);
   const duplicate = useDuplicateEvent();
+  const globalRoles = useSessionStore(state => state.roles.global);
+  const canAssignManager = globalRoles.some(role => role === "super_admin" || role === "operations_admin");
+  const [duplicateManagerId, setDuplicateManagerId] = useState("");
   const [duplicateForm, setDuplicateForm] = useState({ name: "", start_date: "", end_date: "" });
 
   return (
@@ -93,129 +156,119 @@ export default function EventDetailPage({
       ) : (
         <>
           <Header title={event.name} />
+          <EventManagerPanel eventId={event.id} currentManagerId={event.organizer_user_id} />
 
-          <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
-            <GlassPanel className="rise-in">
-              <div className="mb-5 flex flex-wrap items-center gap-3">
-                <Badge tone={STATUS_TONE[event.status]}>{EVENT_STATUS_LABELS[event.status]}</Badge>
-                {(event.main_category || event.sub_category || event.category) && (
-                  <span className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]">
-                    <Layers3 className="h-3.5 w-3.5" />
-                    {event.main_category?.name || event.category || "—"}
-                    {event.sub_category?.name && (
-                      <span className="text-[var(--foreground-subtle)]">/ {event.sub_category.name}</span>
-                    )}
-                  </span>
-                )}
-                <span className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  {new Date(event.start_date).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                  {" – "}
-                  {new Date(event.end_date).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
+          <GlassPanel className="rise-in mb-4">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(240px,300px)_1fr]">
+              <div>
+                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--foreground-subtle)]">
+                  Event image
+                </h2>
+                <EventImageField eventId={event.id} imageUrl={event.image_url} />
               </div>
 
-              {event.description && (
-                <p className="mb-5 text-sm text-[var(--foreground-muted)]">{event.description}</p>
-              )}
+              <div className="min-w-0 lg:border-l lg:border-[var(--border)] lg:pl-6">
+                <div className="mb-4 flex flex-wrap items-center gap-3">
+                  <Badge tone={STATUS_TONE[event.status]}>{EVENT_STATUS_LABELS[event.status]}</Badge>
+                  {(event.main_category || event.sub_category || event.category) && (
+                    <span className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]">
+                      <Layers3 className="h-3.5 w-3.5" />
+                      {event.main_category?.name || event.category || "—"}
+                      {event.sub_category?.name && (
+                        <span className="text-[var(--foreground-subtle)]">/ {event.sub_category.name}</span>
+                      )}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    {new Date(event.start_date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                    {" – "}
+                    {new Date(event.end_date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                </div>
 
-              <EventStatusStepper eventId={event.id} status={event.status} />
+                {event.description && (
+                  <p className="mb-4 text-sm text-[var(--foreground-muted)]">{event.description}</p>
+                )}
+
+                <EventStatusStepper eventId={event.id} status={event.status} />
+              </div>
+            </div>
+          </GlassPanel>
+
+          <GlassPanel className="rise-in mb-4">
+            <h2 className="mb-3 text-sm font-semibold text-[var(--foreground)]">Manage this event</h2>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {manageActions(event.id).map((action) => (
+                <ManageActionTile key={action.href} {...action} />
+              ))}
+            </div>
+          </GlassPanel>
+
+          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <GlassPanel className="rise-in">
+              <div className="mb-2 flex items-center gap-2 text-[var(--foreground)]">
+                <Building2 className="h-4 w-4" />
+                <span className="text-sm font-semibold">Organizer</span>
+              </div>
+              <p className="text-sm text-[var(--foreground)]">{event.organizer?.name ?? "Unassigned"}</p>
+              <p className="text-sm text-[var(--foreground-muted)]">{event.organizer?.mobile_number ?? "No mobile number"}</p>
             </GlassPanel>
 
-            <GlassPanel className="rise-in flex flex-col gap-3">
-              <p className="text-sm font-semibold text-[var(--foreground)]">Manage this event</p>
-              <div className="rounded-[var(--radius-sm)] border border-[var(--accent)]/20 bg-[var(--accent-soft)] p-3">
-                <p className="mb-2 text-xs font-semibold text-[var(--foreground)]">Duplicate event</p>
-                <div className="space-y-2">
-                  <Input placeholder="New event name" value={duplicateForm.name} onChange={(input) => setDuplicateForm((value) => ({ ...value, name: input.target.value }))} />
-                  <Input type="datetime-local" value={duplicateForm.start_date} onChange={(input) => setDuplicateForm((value) => ({ ...value, start_date: input.target.value }))} />
-                  <Input type="datetime-local" value={duplicateForm.end_date} onChange={(input) => setDuplicateForm((value) => ({ ...value, end_date: input.target.value }))} />
-                  <Button className="w-full" loading={duplicate.isPending} disabled={!duplicateForm.name || !duplicateForm.start_date || !duplicateForm.end_date} onClick={async () => { const created = await duplicate.mutateAsync({ eventId, payload: { name: duplicateForm.name, start_date: new Date(duplicateForm.start_date).toISOString(), end_date: new Date(duplicateForm.end_date).toISOString() } }); router.push(`/ops/events/${created.id}`); }}>Duplicate event</Button>
-                </div>
-                <p className="mt-2 text-[11px] text-[var(--foreground-muted)]">Configuration is copied; registrations, payments, tickets, attendance, check-ins and history are not.</p>
+            <GlassPanel className="rise-in">
+              <div className="mb-2 flex items-center gap-2 text-[var(--foreground)]">
+                <Copy className="h-4 w-4" />
+                <span className="text-sm font-semibold">Duplicate event</span>
               </div>
-              <div className="rounded-[var(--radius-sm)] border border-black/[0.05] bg-white/60 p-3 text-sm text-[var(--foreground-muted)]">
-                <div className="mb-2 flex items-center gap-2 text-[var(--foreground)]">
-                  <Building2 className="h-4 w-4" />
-                  <span className="font-medium">Organizer</span>
-                </div>
-                <p>{event.organizer?.name ?? "Unassigned"}</p>
-                <p>{event.organizer?.mobile_number ?? "No mobile number"}</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <Input
+                  className="sm:col-span-1"
+                  placeholder="New event name"
+                  value={duplicateForm.name}
+                  onChange={(input) => setDuplicateForm((value) => ({ ...value, name: input.target.value }))}
+                />
+                <Input
+                  type="datetime-local"
+                  value={duplicateForm.start_date}
+                  onChange={(input) => setDuplicateForm((value) => ({ ...value, start_date: input.target.value }))}
+                />
+                <Input
+                  type="datetime-local"
+                  value={duplicateForm.end_date}
+                  onChange={(input) => setDuplicateForm((value) => ({ ...value, end_date: input.target.value }))}
+                />
               </div>
-              <Link href={`/ops/events/${event.id}/registrations`}>
-                <Button variant="outline" className="w-full justify-start gap-2.5">
-                  <ClipboardList className="h-4 w-4" />
-                  Registrations
-                </Button>
-              </Link>
-              <Link href={`/ops/events/${event.id}/waitlist`}>
-                <Button variant="outline" className="w-full justify-start gap-2.5">
-                  <ListOrdered className="h-4 w-4" />
-                  Waitlist
-                </Button>
-              </Link>
-              <Link href={`/ops/events/${event.id}/access`}>
-                <Button variant="outline">Ticket access</Button>
-              </Link>
-              <Link href={`/ops/events/${event.id}/teams`}>
-                <Button variant="outline" className="w-full justify-start gap-2.5">
-                  <Users2 className="h-4 w-4" />
-                  Teams
-                </Button>
-              </Link>
-              <Link href={`/ops/events/${event.id}/competitions`}>
-                <Button variant="outline" className="w-full justify-start gap-2.5">
-                  Competitions
-                </Button>
-              </Link>
-              <Link href={`/ops/events/${event.id}/operations`}>
-                <Button variant="outline" className="w-full justify-start gap-2.5">
-                  <Radio className="h-4 w-4" />
-                  Day-of Operations
-                </Button>
-              </Link>
-              <Link href={`/ops/events/${event.id}/attendance`}>
-                <Button variant="outline" className="w-full justify-start gap-2.5">
-                  <BarChart3 className="h-4 w-4" />
-                  Attendance Analytics
-                </Button>
-              </Link>
-              <Link href={`/ops/events/${event.id}/configure`}>
-                <Button variant="outline" className="w-full justify-start gap-2.5">
-                  <Settings2 className="h-4 w-4" />
-                  Configuration Builder
-                </Button>
-              </Link>
-              <Link href={`/ops/events/${event.id}/reports`}>
-                <Button variant="outline" className="w-full justify-start gap-2.5">
-                  <BarChart3 className="h-4 w-4" />
-                  Event Reports
-                </Button>
-              </Link>
-              <Link href={`/ops/events/${event.id}/analytics`}>
-                <Button variant="outline" className="w-full justify-start gap-2.5">
-                  <BarChart3 className="h-4 w-4" />
-                  Advanced Analytics
-                </Button>
-              </Link>
-              <Link href={`/ops/events/${event.id}/feedback`}>
-                <Button variant="outline" className="w-full justify-start gap-2.5">
-                  <MessageSquare className="h-4 w-4" />
-                  Feedback
-                </Button>
-              </Link>
+              {canAssignManager && <EventManagerPicker value={duplicateManagerId} onChange={setDuplicateManagerId} />}
+              {duplicate.isError && <p role="alert" className="text-sm text-[var(--danger)]">{duplicate.error.message}</p>}
+              <Button
+                className="mt-2 w-full"
+                size="sm"
+                loading={duplicate.isPending}
+                disabled={!duplicateForm.name || !duplicateForm.start_date || !duplicateForm.end_date || (canAssignManager && !duplicateManagerId)}
+                onClick={async () => {
+                  try {
+                  const created = await duplicate.mutateAsync({
+                    eventId,
+                    payload: {
+                      organizer_user_id: canAssignManager ? duplicateManagerId : undefined,
+                      name: duplicateForm.name,
+                      start_date: new Date(duplicateForm.start_date).toISOString(),
+                      end_date: new Date(duplicateForm.end_date).toISOString(),
+                    },
+                  });
+                  router.push(`/ops/events/${created.id}`);
+                  } catch { /* Mutation error is displayed above. */ }
+                }}
+              >
+                Duplicate event
+              </Button>
+              <p className="mt-2 text-[11px] text-[var(--foreground-subtle)]">
+                Configuration is copied; registrations, payments, tickets, attendance, check-ins and history are not.
+              </p>
             </GlassPanel>
           </div>
 
-          <div className="mb-6">
+          <div className="mb-4">
             <GlassPanel>
               <h2 className="mb-4 text-sm font-semibold text-[var(--foreground)]">Event details</h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -235,18 +288,14 @@ export default function EventDetailPage({
                 </div>
                 <div>
                   <p className="text-xs text-[var(--foreground-subtle)]">Venue</p>
-                  <p className="text-sm text-[var(--foreground)]">
-                    {event.configuration?.details?.venue_name ?? "—"}
-                  </p>
+                  <p className="text-sm text-[var(--foreground)]">{event.configuration?.details?.venue_name ?? "—"}</p>
                   <p className="text-xs text-[var(--foreground-muted)]">
                     {event.configuration?.details?.venue_address ?? event.configuration?.details?.venue_location ?? "—"}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-[var(--foreground-subtle)]">Eligibility</p>
-                  <p className="text-sm text-[var(--foreground)]">
-                    {event.configuration?.details?.age_group ?? "—"}
-                  </p>
+                  <p className="text-sm text-[var(--foreground)]">{event.configuration?.details?.age_group ?? "—"}</p>
                   <p className="text-xs text-[var(--foreground-muted)]">
                     Min {event.configuration?.details?.age_min ?? "—"} / Max {event.configuration?.details?.age_max ?? "—"}
                   </p>
@@ -260,9 +309,7 @@ export default function EventDetailPage({
                 </div>
                 <div>
                   <p className="text-xs text-[var(--foreground-subtle)]">Event type</p>
-                  <p className="text-sm text-[var(--foreground)]">
-                    {event.configuration?.details?.event_type ?? "—"}
-                  </p>
+                  <p className="text-sm text-[var(--foreground)]">{event.configuration?.details?.event_type ?? "—"}</p>
                   <p className="text-xs text-[var(--foreground-muted)]">
                     Team size {event.configuration?.details?.team_size_min ?? "—"} to{" "}
                     {event.configuration?.details?.team_size_max ?? "—"}
@@ -270,21 +317,15 @@ export default function EventDetailPage({
                 </div>
                 <div>
                   <p className="text-xs text-[var(--foreground-subtle)]">Gender eligibility</p>
-                  <p className="text-sm text-[var(--foreground)]">
-                    {event.configuration?.details?.gender_eligibility ?? "—"}
-                  </p>
+                  <p className="text-sm text-[var(--foreground)]">{event.configuration?.details?.gender_eligibility ?? "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[var(--foreground-subtle)]">Required documents</p>
-                  <p className="text-sm text-[var(--foreground)]">
-                    {formatList(event.configuration?.details?.required_documents)}
-                  </p>
+                  <p className="text-sm text-[var(--foreground)]">{formatList(event.configuration?.details?.required_documents)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[var(--foreground-subtle)]">Contact</p>
-                  <p className="text-sm text-[var(--foreground)]">
-                    {event.configuration?.details?.contact_name ?? "—"}
-                  </p>
+                  <p className="text-sm text-[var(--foreground)]">{event.configuration?.details?.contact_name ?? "—"}</p>
                   <p className="text-xs text-[var(--foreground-muted)]">
                     {event.configuration?.details?.contact_email ?? "—"}
                     {" · "}

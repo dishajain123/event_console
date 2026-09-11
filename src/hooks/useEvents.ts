@@ -7,6 +7,8 @@ import {
   changeEventStatus,
   deleteSponsor,
   getEvent,
+  setEventImage,
+  removeEventImage,
   listEvents,
   listSchedule,
   listManagedSchedule,
@@ -109,6 +111,32 @@ export function useUpdateEvent(eventId: string) {
       queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
   });
+}
+
+function useEventImageMutation(eventId: string, fn: (eventId: string) => Promise<unknown>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => fn(eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: eventsQueryKeys.detail(eventId) });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}
+
+export function useSetEventImage(eventId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => setEventImage(eventId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: eventsQueryKeys.detail(eventId) });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}
+
+export function useRemoveEventImage(eventId: string) {
+  return useEventImageMutation(eventId, removeEventImage);
 }
 
 export function useChangeEventStatus(eventId: string) {

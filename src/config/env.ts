@@ -6,5 +6,5 @@
  * is a single value to change, not a search-and-replace.
  */
 export const env = {
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8001/api/v1",
+  apiBaseUrl: process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8001/api/v1",
 } as const;

@@ -22,7 +22,7 @@ export function canAccessFinanceConsole(roles: SessionRoles): boolean {
 }
 
 export function canAccessAccountManagement(roles: SessionRoles): boolean {
-  return roles.global.some(
+  return roles.scopedEventManagerEventIds.length > 0 || roles.global.some(
     (r) => r === "super_admin" || r === "operations_admin" || r === "finance_admin",
   );
 }

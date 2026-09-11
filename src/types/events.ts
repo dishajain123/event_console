@@ -30,6 +30,8 @@ export interface EventOut {
   start_date: string;
   end_date: string;
   status: EventStatus;
+  /** Public URL of the normalized 16:9 cover image, or null to use the placeholder. */
+  image_url: string | null;
 }
 
 export interface EventCreateIn {
