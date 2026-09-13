@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getIncident, listIncidents, updateIncident } from "@/api/incidents";
+import { getIncident, listIncidents, updateIncident, type IncidentFilters } from "@/api/incidents";
 import { useSessionStore } from "@/state/sessionStore";
 import type { IncidentUpdateIn } from "@/types/incidents";
 
-export function useIncidents(filters: { eventId?: string; status?: string; severity?: string; category?: string; search?: string; page?: number; pageSize?: number } = {}) {
+export function useIncidents(filters: IncidentFilters = {}) {
   const ready = useSessionStore((s) => s.hydrated && !!s.user);
   return useQuery({ queryKey: ["incidents", filters], queryFn: () => listIncidents(filters), enabled: ready });
 }

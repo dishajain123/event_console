@@ -16,7 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { TableSkeleton } from "@/components/shared/skeleton";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
-import { useEvents } from "@/hooks/useEvents";
+import { CategoryEventFilter } from "@/components/shared/category-event-filter";
+import { useCategoryEventFilter } from "@/hooks/useCategoryEventFilter";
 import { useEventMedia, usePublishMedia, useUploadMedia } from "@/hooks/useMedia";
 import type { MediaOut, MediaType } from "@/types/media";
 
@@ -31,8 +32,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function MediaPage() {
-  const { data: events } = useEvents();
-  const [eventId, setEventId] = useState("");
+  const categoryEventFilter = useCategoryEventFilter();
+  const eventId = categoryEventFilter.eventId;
   const { data: media, isLoading, isError, refetch } = useEventMedia(eventId);
   const uploadMedia = useUploadMedia(eventId);
   const publishMedia = usePublishMedia(eventId);
@@ -81,15 +82,13 @@ export default function MediaPage() {
     <div>
       <Header title="Media" />
 
-      <div className="mb-4">
-        <Select className="w-64" value={eventId} onChange={(e) => setEventId(e.target.value)}>
-          <option value="">Select an event…</option>
-          {(events ?? []).map((event) => (
-            <option key={event.id} value={event.id}>
-              {event.name}
-            </option>
-          ))}
-        </Select>
+      <div className="mb-4 flex flex-wrap items-center gap-2.5">
+        <CategoryEventFilter filter={categoryEventFilter} />
+        {categoryEventFilter.isFiltered && (
+          <Button variant="ghost" size="sm" onClick={categoryEventFilter.reset}>
+            Reset
+          </Button>
+        )}
       </div>
 
       {!eventId ? (

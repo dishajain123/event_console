@@ -177,6 +177,11 @@ export default function ReconciliationPage() {
                   </TableContainer>
                 )}
               </div>
+              {(webhooks ?? []).length > 20 && (
+                <p className="border-t border-[var(--border)] px-5 py-2.5 text-center text-xs text-[var(--foreground-subtle)]">
+                  Showing the 20 most recent of {webhooks!.length} — refine via Transactions for the full history.
+                </p>
+              )}
             </GlassPanel>
           </div>
         </>

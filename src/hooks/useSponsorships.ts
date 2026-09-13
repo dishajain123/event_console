@@ -75,11 +75,11 @@ export function useAssignSponsorship() {
   });
 }
 
-export function useManagedSponsors(eventId?: string, search?: string, status?: string, page = 1) {
+export function useManagedSponsors(eventId?: string, search?: string, status?: string, page = 1, mainCategoryId?: string, subCategoryId?: string) {
   const ready = useReady();
   return useQuery({
-    queryKey: ["sponsorship", "managed-sponsors", eventId ?? "all", search ?? "", status ?? "all", page],
-    queryFn: () => listManagedSponsors({ eventId, search, status, page, pageSize: 25 }),
+    queryKey: ["sponsorship", "managed-sponsors", eventId ?? "all", search ?? "", status ?? "all", page, mainCategoryId ?? "all", subCategoryId ?? "all"],
+    queryFn: () => listManagedSponsors({ eventId, search, status, page, pageSize: 25, mainCategoryId, subCategoryId }),
     enabled: ready,
   });
 }

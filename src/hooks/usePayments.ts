@@ -15,7 +15,7 @@ export const paymentsQueryKeys = {
   webhooks: ["payment-webhooks"] as const,
 };
 
-export function usePayments(filters: { eventId?: string; page?: number; pageSize?: number; search?: string; status?: string } = {}) {
+export function usePayments(filters: { eventId?: string; mainCategoryId?: string; subCategoryId?: string; page?: number; pageSize?: number; search?: string; status?: string } = {}) {
   const ready = useReady();
   return useQuery({
     queryKey: paymentsQueryKeys.payments(filters),

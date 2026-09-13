@@ -7,6 +7,8 @@ export interface FeedbackFilters {
   rating?: number;
   dateFrom?: string;
   dateTo?: string;
+  mainCategoryId?: string;
+  subCategoryId?: string;
   limit?: number;
   offset?: number;
 }
@@ -23,6 +25,8 @@ function params(filters: FeedbackFilters) {
     rating: filters.rating,
     date_from: filters.dateFrom ? `${filters.dateFrom}T00:00:00Z` : undefined,
     date_to: filters.dateTo ? `${filters.dateTo}T23:59:59Z` : undefined,
+    main_category_id: filters.mainCategoryId,
+    sub_category_id: filters.subCategoryId,
     limit: filters.limit,
     offset: filters.offset,
   };

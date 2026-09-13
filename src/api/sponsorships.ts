@@ -62,7 +62,7 @@ export async function assignSponsorship(
   return data;
 }
 
-export async function listManagedSponsors(params: { eventId?: string; page?: number; pageSize?: number; search?: string; status?: string; category?: string } = {}): Promise<ManagedSponsorPage> {
+export async function listManagedSponsors(params: { eventId?: string; page?: number; pageSize?: number; search?: string; status?: string; category?: string; mainCategoryId?: string; subCategoryId?: string } = {}): Promise<ManagedSponsorPage> {
   const { data } = await apiClient.get<ManagedSponsorPage>("/sponsorship/sponsors", {
     params: {
       page: params.page ?? 1,
@@ -71,6 +71,8 @@ export async function listManagedSponsors(params: { eventId?: string; page?: num
       ...(params.search ? { search: params.search } : {}),
       ...(params.status && params.status !== "all" ? { status: params.status } : {}),
       ...(params.category ? { category: params.category } : {}),
+      ...(params.mainCategoryId ? { main_category_id: params.mainCategoryId } : {}),
+      ...(params.subCategoryId ? { sub_category_id: params.subCategoryId } : {}),
     },
   });
   return data;

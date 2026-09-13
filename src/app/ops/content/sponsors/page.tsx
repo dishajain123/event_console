@@ -19,7 +19,8 @@ import { Tabs, TabPanel } from "@/components/ui/tabs";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { TableSkeleton } from "@/components/shared/skeleton";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
-import { useEvents } from "@/hooks/useEvents";
+import { CategoryEventFilter } from "@/components/shared/category-event-filter";
+import { useCategoryEventFilter } from "@/hooks/useCategoryEventFilter";
 import { useAddSponsor, useRemoveSponsor } from "@/hooks/useSponsors";
 import {
   useAssignSponsorship,
@@ -60,14 +61,21 @@ const SPONSOR_PAGE_SIZE = 25;
  * workflow they're in.
  */
 export default function SponsorsPage() {
-  const { data: events } = useEvents();
-  const [eventId, setEventId] = useState("");
+  const categoryEventFilter = useCategoryEventFilter();
+  const eventId = categoryEventFilter.eventId;
   const [activeTab, setActiveTab] = useState<"sponsors" | "inquiries">("sponsors");
 
   const [sponsorSearch, setSponsorSearch] = useState("");
   const [sponsorStatus, setSponsorStatus] = useState("all");
   const [sponsorPage, setSponsorPage] = useState(1);
-  const { data: managedSponsors, isLoading, isError, refetch } = useManagedSponsors(eventId || undefined, sponsorSearch, sponsorStatus, sponsorPage);
+  const { data: managedSponsors, isLoading, isError, refetch } = useManagedSponsors(
+    eventId || undefined,
+    sponsorSearch,
+    sponsorStatus,
+    sponsorPage,
+    categoryEventFilter.mainCategoryId || undefined,
+    categoryEventFilter.subCategoryId || undefined,
+  );
   const addSponsor = useAddSponsor(eventId);
   const removeSponsor = useRemoveSponsor(eventId);
   const [removeTarget, setRemoveTarget] = useState<ManagedSponsor | null>(null);
@@ -138,14 +146,14 @@ export default function SponsorsPage() {
       <PageToolbar
         description="Approved sponsors and inbound sponsorship inquiries, kept as two separate workflows."
         actions={
-          <Select className="w-64" value={eventId} onChange={(e) => setEventId(e.target.value)}>
-            <option value="">All events</option>
-            {(events ?? []).map((event) => (
-              <option key={event.id} value={event.id}>
-                {event.name}
-              </option>
-            ))}
-          </Select>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <CategoryEventFilter filter={categoryEventFilter} />
+            {categoryEventFilter.isFiltered && (
+              <Button variant="ghost" size="sm" onClick={categoryEventFilter.reset}>
+                Reset
+              </Button>
+            )}
+          </div>
         }
       />
 

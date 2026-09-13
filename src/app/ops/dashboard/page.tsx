@@ -200,9 +200,14 @@ export default function OpsDashboardPage() {
                 <EmptyState icon={AlertTriangle} title="No action required" description="No current operational alerts were detected." />
               ) : (
                 <div className="space-y-1.5">
-                  {alerts.map((alert, index) => (
+                  {alerts.slice(0, 5).map((alert, index) => (
                     <AlertRow key={`${alert.code}-${alert.event_id}-${index}`} alert={alert} />
                   ))}
+                  {alerts.length > 5 && (
+                    <p className="pt-0.5 text-center text-xs text-[var(--foreground-subtle)]">
+                      +{alerts.length - 5} more alert{alerts.length - 5 === 1 ? "" : "s"}
+                    </p>
+                  )}
                 </div>
               )}
             </GlassPanel>

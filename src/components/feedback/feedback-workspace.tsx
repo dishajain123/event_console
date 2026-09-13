@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { MessageSquare, Star, Users } from "lucide-react";
 import { useFeedback, useFeedbackCategories, useFeedbackSummary } from "@/hooks/useFeedback";
+import { useCategoryEventFilter } from "@/hooks/useCategoryEventFilter";
 import { FEEDBACK_CATEGORY_LABELS, type FeedbackCategory } from "@/types/feedback";
 import { Header } from "@/components/layout/header";
 import { FilterBar } from "@/components/shared/filter-bar";
+import { CategoryEventFilter } from "@/components/shared/category-event-filter";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -13,25 +15,37 @@ import { KPICard } from "@/components/reports/kpi-card";
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, TableContainer } from "@/components/ui/table";
 import { CardSkeleton } from "@/components/shared/skeleton";
 import { EmptyState, ErrorState } from "@/components/shared/states";
+import type { ApiError } from "@/api/client";
 
-/** Same `useFeedback`/`useFeedbackSummary`/`useFeedbackCategories` hooks and filter shape as before. */
 export function FeedbackWorkspace({ eventId }: { eventId?: string }) {
   const [category, setCategory] = useState<FeedbackCategory | "">("");
   const [rating, setRating] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const categoryEventFilter = useCategoryEventFilter();
+
   const filters = {
-    eventId,
+    eventId: eventId || categoryEventFilter.eventId || undefined,
     category: category || undefined,
     rating: rating ? Number(rating) : undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
+    mainCategoryId: categoryEventFilter.mainCategoryId || undefined,
+    subCategoryId: categoryEventFilter.subCategoryId || undefined,
     limit: 100,
   };
   const feedback = useFeedback(filters);
   const summary = useFeedbackSummary(filters);
   const categories = useFeedbackCategories();
-  const isFiltered = !!(category || rating || dateFrom || dateTo);
+  const isFiltered = !!(category || rating || dateFrom || dateTo || categoryEventFilter.isFiltered);
+
+  function resetAll() {
+    setCategory("");
+    setRating("");
+    setDateFrom("");
+    setDateTo("");
+    categoryEventFilter.reset();
+  }
 
   return (
     <div>
@@ -45,7 +59,10 @@ export function FeedbackWorkspace({ eventId }: { eventId?: string }) {
           </>
         ) : summary.isError || !summary.data ? (
           <div className="sm:col-span-3">
-            <ErrorState description="Couldn't load feedback summary." onRetry={() => summary.refetch()} />
+            <ErrorState
+              description={(summary.error as unknown as ApiError | null)?.message ?? "Couldn't load feedback summary."}
+              onRetry={() => summary.refetch()}
+            />
           </div>
         ) : (
           <>
@@ -56,17 +73,10 @@ export function FeedbackWorkspace({ eventId }: { eventId?: string }) {
         )}
       </div>
 
-      <FilterBar
-        isFiltered={isFiltered}
-        onReset={() => {
-          setCategory("");
-          setRating("");
-          setDateFrom("");
-          setDateTo("");
-        }}
-      >
+      <FilterBar isFiltered={isFiltered} onReset={resetAll}>
+        {!eventId && <CategoryEventFilter filter={categoryEventFilter} />}
         <Select className="w-48" value={category} onChange={(event) => setCategory(event.target.value as FeedbackCategory | "")}>
-          <option value="">All categories</option>
+          <option value="">All feedback categories</option>
           {(categories.data ?? []).map((item) => (
             <option key={item.code} value={item.code}>
               {item.label}
@@ -88,9 +98,17 @@ export function FeedbackWorkspace({ eventId }: { eventId?: string }) {
       {feedback.isLoading ? (
         <CardSkeleton />
       ) : feedback.isError ? (
-        <ErrorState description="Couldn't load feedback." onRetry={() => feedback.refetch()} />
+        <ErrorState
+          description={(feedback.error as unknown as ApiError | null)?.message ?? "Couldn't load feedback."}
+          onRetry={() => feedback.refetch()}
+        />
       ) : !feedback.data?.length ? (
-        <EmptyState icon={MessageSquare} title="No feedback found" description="Feedback will appear here once participants submit it." />
+        <EmptyState
+          icon={MessageSquare}
+          title="No feedback found"
+          description={isFiltered ? "No feedback matches these filters. Try clearing some." : "Feedback will appear here once participants submit it."}
+          action={isFiltered ? { label: "Clear filters", onClick: resetAll } : undefined}
+        />
       ) : (
         <GlassPanel padded={false}>
           <TableContainer>

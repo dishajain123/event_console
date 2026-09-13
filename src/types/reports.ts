@@ -8,6 +8,10 @@ export interface RegistrationStatusBreakdown {
 export interface EventOperationsReportOut {
   event_id: string;
   event_name: string;
+  main_category_id: string | null;
+  main_category_name: string | null;
+  sub_category_id: string | null;
+  sub_category_name: string | null;
   total_registrations: number;
   active_registrations: number;
   registrations_by_status: RegistrationStatusBreakdown[];
@@ -29,6 +33,10 @@ export interface PlatformOperationsReportOut {
 export interface EventFinancialReportOut {
   event_id: string;
   event_name: string;
+  main_category_id: string | null;
+  main_category_name: string | null;
+  sub_category_id: string | null;
+  sub_category_name: string | null;
   total_revenue: string | number;
   verified_payment_count: number;
   pending_payment_count: number;

@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Flag, Handshake, Users } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
-import { ErrorState } from "@/components/shared/states";
+import { EmptyState, ErrorState } from "@/components/shared/states";
+import { CardSkeleton } from "@/components/shared/skeleton";
 import { useNetworking } from "@/hooks/useNetworking";
 import type { ConnectionStatus } from "@/types/networking";
 
@@ -44,12 +45,26 @@ export default function NetworkingPage({ params }: { params: Promise<{ eventId: 
   } = useNetworking(eventId);
 
   if (config.isLoading || participants.isLoading || connections.isLoading || reports.isLoading || metrics.isLoading) {
-    return <p className="p-5 text-sm text-[var(--foreground-muted)]">Loading networking…</p>;
+    return (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
+    );
   }
   if (config.isError || participants.isError || connections.isError || reports.isError || metrics.isError) {
     return (
       <div className="p-5">
-        <ErrorState title="Unable to load networking" />
+        <ErrorState
+          title="Unable to load networking"
+          onRetry={() => {
+            config.refetch();
+            participants.refetch();
+            connections.refetch();
+            reports.refetch();
+            metrics.refetch();
+          }}
+        />
       </div>
     );
   }
@@ -137,7 +152,7 @@ export default function NetworkingPage({ params }: { params: Promise<{ eventId: 
             ))}
           </div>
         ) : (
-          <p className="text-sm text-[var(--foreground-muted)]">No opted-in participants.</p>
+          <EmptyState icon={Users} title="No opted-in participants" description="Participants appear here once they opt in to networking." />
         )}
         <Pagination
           page={participantPage}
@@ -185,7 +200,7 @@ export default function NetworkingPage({ params }: { params: Promise<{ eventId: 
             ))}
           </div>
         ) : (
-          <p className="text-sm text-[var(--foreground-muted)]">No connections found.</p>
+          <EmptyState icon={Handshake} title="No connections found" description="Try clearing the search or status filter." />
         )}
         <Pagination
           page={connectionPage}
@@ -219,7 +234,7 @@ export default function NetworkingPage({ params }: { params: Promise<{ eventId: 
             ))}
           </div>
         ) : (
-          <p className="text-sm text-[var(--foreground-muted)]">No reports.</p>
+          <EmptyState icon={Flag} title="No reports" description="Reported participants or connections will show up here for review." />
         )}
       </GlassPanel>
     </div>

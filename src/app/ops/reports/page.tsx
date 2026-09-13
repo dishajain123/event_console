@@ -2,20 +2,26 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { CalendarDays, ChevronDown, RefreshCw, Search, Users, CheckSquare, TrendingUp } from "lucide-react";
+import { ArrowUpDown, CalendarDays, ChevronDown, RefreshCw, Search, Users, CheckSquare, TrendingUp } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { PageToolbar } from "@/components/shared/page-toolbar";
+import { FilterBar } from "@/components/shared/filter-bar";
 import { GlassPanel } from "@/components/ui/glass-panel";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { KPICard } from "@/components/reports/kpi-card";
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, TableContainer } from "@/components/ui/table";
 import { CardSkeleton } from "@/components/shared/skeleton";
 import { ErrorState, EmptyState } from "@/components/shared/states";
 import { usePlatformOperationsReport } from "@/hooks/useReports";
+import { useMainCategories, useSubCategories } from "@/hooks/useEventCategories";
 import { REGISTRATION_STATUS_LABELS } from "@/types/registrations";
 import { cn } from "@/lib/utils";
 import type { EventOperationsReportOut } from "@/types/reports";
+
+type SortKey = "name" | "registrations" | "checkins" | "utilization";
 
 /** Reused for both the all-events funnel and each row's own breakdown — no new data, just a shared renderer. */
 function StatusBreakdown({ rows }: { rows: { status: string; count: number; pct: number }[] }) {
@@ -48,6 +54,37 @@ function toBreakdownRows(source: { status: string; count: number }[]) {
     .sort((a, b) => b.count - a.count);
 }
 
+function SortableHeaderCell({
+  label,
+  sortKey,
+  activeKey,
+  desc,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  activeKey: SortKey;
+  desc: boolean;
+  onSort: (key: SortKey) => void;
+}) {
+  const active = sortKey === activeKey;
+  return (
+    <TableHeaderCell>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={cn(
+          "flex items-center gap-1 text-xs font-medium uppercase tracking-wide transition-colors",
+          active ? "text-[var(--accent-strong)]" : "text-[var(--foreground-subtle)] hover:text-[var(--foreground)]",
+        )}
+      >
+        {label}
+        <ArrowUpDown className={cn("h-3 w-3", active && !desc && "rotate-180")} />
+      </button>
+    </TableHeaderCell>
+  );
+}
+
 function EventRow({ event, expanded, onToggle }: { event: EventOperationsReportOut; expanded: boolean; onToggle: () => void }) {
   const utilizationPct = event.capacity_utilization_pct ?? (event.capacity ? Math.round((event.capacity_used / event.capacity) * 100) : null);
   return (
@@ -56,13 +93,29 @@ function EventRow({ event, expanded, onToggle }: { event: EventOperationsReportO
         <TableCell>
           <div className="flex items-center gap-2">
             <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-[var(--foreground-subtle)] transition-transform", expanded && "rotate-180")} />
-            <Link
-              href={`/ops/events/${event.event_id}/reports`}
-              onClick={(e) => e.stopPropagation()}
-              className="font-medium text-[var(--foreground)] hover:text-[var(--accent-strong)]"
-            >
-              {event.event_name}
-            </Link>
+            <div className="min-w-0">
+              <Link
+                href={`/ops/events/${event.event_id}/reports`}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-[var(--foreground)] hover:text-[var(--accent-strong)]"
+              >
+                {event.event_name}
+              </Link>
+              {(event.main_category_name || event.sub_category_name) && (
+                <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                  {event.main_category_name && (
+                    <Badge tone="neutral" className="text-[10px]">
+                      {event.main_category_name}
+                    </Badge>
+                  )}
+                  {event.sub_category_name && (
+                    <Badge tone="neutral" className="text-[10px]">
+                      {event.sub_category_name}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </TableCell>
         <TableCell className="text-[var(--foreground-muted)]">
@@ -111,9 +164,16 @@ function EventRow({ event, expanded, onToggle }: { event: EventOperationsReportO
  * flow the brief asks for, built entirely from data already on hand.
  */
 export default function OpsReportsPage() {
-  const { data: report, isLoading, isError, refetch } = usePlatformOperationsReport();
+  const { data: report, isLoading, isError, refetch, dataUpdatedAt } = usePlatformOperationsReport();
   const [search, setSearch] = useState("");
+  const [mainCategoryId, setMainCategoryId] = useState("");
+  const [subCategoryId, setSubCategoryId] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("registrations");
+  const [sortDesc, setSortDesc] = useState(true);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+
+  const mainCategories = useMainCategories();
+  const subCategories = useSubCategories(mainCategoryId || undefined);
 
   const statusTotals = useMemo(() => {
     if (!report) return [];
@@ -126,17 +186,47 @@ export default function OpsReportsPage() {
     return toBreakdownRows(Array.from(totals.entries()).map(([status, count]) => ({ status, count })));
   }, [report]);
 
+  const isFiltered = !!(search || mainCategoryId || subCategoryId);
+
+  function resetAll() {
+    setSearch("");
+    setMainCategoryId("");
+    setSubCategoryId("");
+  }
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDesc((prev) => !prev);
+    } else {
+      setSortKey(key);
+      setSortDesc(true);
+    }
+  }
+
   const filteredEvents = useMemo(() => {
     if (!report) return [];
     const term = search.trim().toLowerCase();
-    if (!term) return report.events;
-    return report.events.filter((event) => event.event_name.toLowerCase().includes(term));
-  }, [report, search]);
+    let events = report.events;
+    if (term) events = events.filter((event) => event.event_name.toLowerCase().includes(term));
+    if (mainCategoryId) events = events.filter((event) => event.main_category_id === mainCategoryId);
+    if (subCategoryId) events = events.filter((event) => event.sub_category_id === subCategoryId);
+
+    const sorted = [...events].sort((a, b) => {
+      let diff = 0;
+      if (sortKey === "name") diff = a.event_name.localeCompare(b.event_name);
+      else if (sortKey === "registrations") diff = a.total_registrations - b.total_registrations;
+      else if (sortKey === "checkins") diff = a.total_check_ins - b.total_check_ins;
+      else diff = (a.capacity_utilization_pct ?? -1) - (b.capacity_utilization_pct ?? -1);
+      return sortDesc ? -diff : diff;
+    });
+    return sorted;
+  }, [report, search, mainCategoryId, subCategoryId, sortKey, sortDesc]);
 
   return (
     <div>
       <Header title="Operations Reports" />
       <PageToolbar
+        meta={dataUpdatedAt ? `Updated ${new Date(dataUpdatedAt).toLocaleTimeString()}` : undefined}
         actions={
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="h-3.5 w-3.5" />
@@ -168,12 +258,44 @@ export default function OpsReportsPage() {
               <div className="border-b border-[var(--border)] px-5 py-3.5">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="text-sm font-semibold text-[var(--foreground)]">By event</h2>
-                  <span className="text-xs text-[var(--foreground-subtle)]">Click a row for its status breakdown</span>
+                  <span className="text-xs text-[var(--foreground-subtle)]">
+                    {filteredEvents.length} of {report.events.length} · click a row for its breakdown
+                  </span>
                 </div>
-                <div className="relative max-w-xs">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--foreground-subtle)]" />
-                  <Input className="pl-9" placeholder="Search events…" value={search} onChange={(e) => setSearch(e.target.value)} />
-                </div>
+                <FilterBar className="mb-0" isFiltered={isFiltered} onReset={resetAll}>
+                  <div className="relative max-w-xs">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--foreground-subtle)]" />
+                    <Input className="pl-9" placeholder="Search events…" value={search} onChange={(e) => setSearch(e.target.value)} />
+                  </div>
+                  <Select
+                    className="w-44"
+                    value={mainCategoryId}
+                    onChange={(e) => {
+                      setMainCategoryId(e.target.value);
+                      setSubCategoryId("");
+                    }}
+                  >
+                    <option value="">All main categories</option>
+                    {(mainCategories.data ?? []).map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select
+                    className="w-44"
+                    value={subCategoryId}
+                    onChange={(e) => setSubCategoryId(e.target.value)}
+                    disabled={!mainCategoryId}
+                  >
+                    <option value="">All subcategories</option>
+                    {(subCategories.data ?? []).map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </Select>
+                </FilterBar>
               </div>
               {report.events.length === 0 ? (
                 <div className="p-5">
@@ -181,17 +303,22 @@ export default function OpsReportsPage() {
                 </div>
               ) : filteredEvents.length === 0 ? (
                 <div className="p-5">
-                  <EmptyState icon={CalendarDays} title="No events match your search" />
+                  <EmptyState
+                    icon={CalendarDays}
+                    title="No events match these filters"
+                    description="Try a different search term or clear the category filters."
+                    action={{ label: "Clear filters", onClick: resetAll }}
+                  />
                 </div>
               ) : (
                 <TableContainer>
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableHeaderCell>Event</TableHeaderCell>
-                        <TableHeaderCell>Registrations</TableHeaderCell>
-                        <TableHeaderCell>Capacity</TableHeaderCell>
-                        <TableHeaderCell>Check-ins</TableHeaderCell>
+                        <SortableHeaderCell label="Event" sortKey="name" activeKey={sortKey} desc={sortDesc} onSort={toggleSort} />
+                        <SortableHeaderCell label="Registrations" sortKey="registrations" activeKey={sortKey} desc={sortDesc} onSort={toggleSort} />
+                        <SortableHeaderCell label="Capacity" sortKey="utilization" activeKey={sortKey} desc={sortDesc} onSort={toggleSort} />
+                        <SortableHeaderCell label="Check-ins" sortKey="checkins" activeKey={sortKey} desc={sortDesc} onSort={toggleSort} />
                       </TableRow>
                     </TableHead>
                     <TableBody>

@@ -12,8 +12,9 @@ import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, Tabl
 import { TableSkeleton } from "@/components/shared/skeleton";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { PaymentStatusBadge } from "@/components/finance/status-badges";
+import { CategoryEventFilter } from "@/components/shared/category-event-filter";
+import { useCategoryEventFilter } from "@/hooks/useCategoryEventFilter";
 import { usePayments } from "@/hooks/usePayments";
-import { useEvents } from "@/hooks/useEvents";
 import { PAYMENT_STATUS_LABELS, type PaymentStatus } from "@/types/payments";
 
 const PAGE_SIZE = 25;
@@ -25,14 +26,15 @@ function formatAmount(amount: string | number, currency: string) {
 
 /** Same `usePayments` hook and filter params as before. */
 export default function TransactionsPage() {
-  const [eventFilter, setEventFilter] = useState<string>("all");
+  const categoryEventFilter = useCategoryEventFilter();
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | "all">("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const { data: events } = useEvents();
   const { data: paymentPage, isLoading, isError, refetch } = usePayments({
-    eventId: eventFilter === "all" ? undefined : eventFilter,
+    eventId: categoryEventFilter.eventId || undefined,
+    mainCategoryId: categoryEventFilter.mainCategoryId || undefined,
+    subCategoryId: categoryEventFilter.subCategoryId || undefined,
     page,
     pageSize: PAGE_SIZE,
     search,
@@ -40,7 +42,7 @@ export default function TransactionsPage() {
   });
   const payments = paymentPage?.items;
   const filtered = payments ?? [];
-  const isFiltered = eventFilter !== "all" || statusFilter !== "all" || search !== "";
+  const isFiltered = categoryEventFilter.isFiltered || statusFilter !== "all" || search !== "";
   const totalPages = paymentPage ? Math.max(1, Math.ceil(paymentPage.total / PAGE_SIZE)) : 1;
 
   const totalVerified = filtered
@@ -54,7 +56,7 @@ export default function TransactionsPage() {
       <FilterBar
         isFiltered={isFiltered}
         onReset={() => {
-          setEventFilter("all");
+          categoryEventFilter.reset();
           setStatusFilter("all");
           setSearch("");
           setPage(1);
@@ -72,21 +74,7 @@ export default function TransactionsPage() {
             }}
           />
         </div>
-        <Select
-          className="w-56"
-          value={eventFilter}
-          onChange={(e) => {
-            setPage(1);
-            setEventFilter(e.target.value);
-          }}
-        >
-          <option value="all">All events</option>
-          {(events ?? []).map((event) => (
-            <option key={event.id} value={event.id}>
-              {event.name}
-            </option>
-          ))}
-        </Select>
+        <CategoryEventFilter filter={categoryEventFilter} />
         <Select
           className="w-44"
           value={statusFilter}

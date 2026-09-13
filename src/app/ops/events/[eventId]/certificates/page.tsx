@@ -55,7 +55,13 @@ export default function CertificatesPage({ params }: { params: Promise<{ eventId
       </p>
 
       {templates.isError || certificates.isError ? (
-        <ErrorState title="Unable to load certificate configuration" />
+        <ErrorState
+          title="Unable to load certificate configuration"
+          onRetry={() => {
+            templates.refetch();
+            certificates.refetch();
+          }}
+        />
       ) : (
         <>
           <GlassPanel className="mb-4">

@@ -16,7 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { TableSkeleton } from "@/components/shared/skeleton";
-import { useEvents } from "@/hooks/useEvents";
+import { CategoryEventFilter } from "@/components/shared/category-event-filter";
+import { useCategoryEventFilter } from "@/hooks/useCategoryEventFilter";
 import { groupNotificationsIntoSends, useEventNotifications, useSendNotification } from "@/hooks/useNotifications";
 import { NOTIFICATION_CHANNEL_LABELS } from "@/types/notifications";
 import type { NotificationChannel } from "@/types/notifications";
@@ -39,9 +40,14 @@ const PAGE_SIZE = 25;
  * instead of a heuristic Next-button disable.
  */
 export default function CommunicationPage() {
-  const { data: events } = useEvents();
-  const [eventId, setEventId] = useState("");
+  const categoryEventFilter = useCategoryEventFilter();
+  const eventId = categoryEventFilter.eventId;
   const [page, setPage] = useState(1);
+  const [lastEventId, setLastEventId] = useState(eventId);
+  if (eventId !== lastEventId) {
+    setLastEventId(eventId);
+    setPage(1);
+  }
   const sendNotification = useSendNotification(eventId);
   const { data: notificationPage, isLoading: sendsLoading, isError: sendsError, refetch: refetchSends } = useEventNotifications(eventId, page);
 
@@ -79,15 +85,13 @@ export default function CommunicationPage() {
     <div>
       <Header title="Communication" />
 
-      <div className="mb-4">
-        <Select className="w-64" value={eventId} onChange={(e) => setEventId(e.target.value)}>
-          <option value="">Select an event…</option>
-          {(events ?? []).map((event) => (
-            <option key={event.id} value={event.id}>
-              {event.name}
-            </option>
-          ))}
-        </Select>
+      <div className="mb-4 flex flex-wrap items-center gap-2.5">
+        <CategoryEventFilter filter={categoryEventFilter} />
+        {categoryEventFilter.isFiltered && (
+          <Button variant="ghost" size="sm" onClick={categoryEventFilter.reset}>
+            Reset
+          </Button>
+        )}
       </div>
 
       {!eventId ? (

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { FilterBar } from "@/components/shared/filter-bar";
+import { CategoryEventFilter } from "@/components/shared/category-event-filter";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -12,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
 import { EmptyState, ErrorState } from "@/components/shared/states";
 import { useIncident, useIncidents, useUpdateIncident } from "@/hooks/useIncidents";
+import { useCategoryEventFilter } from "@/hooks/useCategoryEventFilter";
 import { cn } from "@/lib/utils";
 import type { IncidentOut, IncidentSeverity, IncidentStatus } from "@/types/incidents";
 
@@ -128,31 +130,46 @@ const PAGE_SIZE = 25;
 /** Same `useIncidents` hook and filter params as before. */
 export default function IncidentsPage() {
   const [search, setSearch] = useState("");
-  const [eventId, setEventId] = useState("");
   const [status, setStatus] = useState("");
   const [severity, setSeverity] = useState("");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string | null>(null);
+  const categoryEventFilter = useCategoryEventFilter();
 
-  const result = useIncidents({ search, eventId: eventId || undefined, status: status || undefined, severity: severity || undefined, page, pageSize: PAGE_SIZE });
-  const isFiltered = !!(search || eventId || status || severity);
+  const result = useIncidents({
+    search,
+    eventId: categoryEventFilter.eventId || undefined,
+    mainCategoryId: categoryEventFilter.mainCategoryId || undefined,
+    subCategoryId: categoryEventFilter.subCategoryId || undefined,
+    status: status || undefined,
+    severity: severity || undefined,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+  const isFiltered = !!(search || status || severity || categoryEventFilter.isFiltered);
   const totalPages = result.data ? Math.max(1, Math.ceil(result.data.total / PAGE_SIZE)) : 1;
+
+  const cascadeKey = `${categoryEventFilter.mainCategoryId}|${categoryEventFilter.subCategoryId}|${categoryEventFilter.eventId}`;
+  const [lastCascadeKey, setLastCascadeKey] = useState(cascadeKey);
+  if (cascadeKey !== lastCascadeKey) {
+    setLastCascadeKey(cascadeKey);
+    setPage(1);
+  }
+
+  function resetAll() {
+    setSearch("");
+    setStatus("");
+    setSeverity("");
+    setPage(1);
+    categoryEventFilter.reset();
+  }
 
   return (
     <div>
       <Header title="Incidents" />
       <p className="mb-4 -mt-2 text-sm text-[var(--foreground-muted)]">Event-scoped operational incident management.</p>
 
-      <FilterBar
-        isFiltered={isFiltered}
-        onReset={() => {
-          setSearch("");
-          setEventId("");
-          setStatus("");
-          setSeverity("");
-          setPage(1);
-        }}
-      >
+      <FilterBar isFiltered={isFiltered} onReset={resetAll}>
         <Input
           className="max-w-xs"
           placeholder="Search title or description"
@@ -162,15 +179,7 @@ export default function IncidentsPage() {
             setPage(1);
           }}
         />
-        <Input
-          className="max-w-[220px]"
-          placeholder="Event ID"
-          value={eventId}
-          onChange={(e) => {
-            setEventId(e.target.value);
-            setPage(1);
-          }}
-        />
+        <CategoryEventFilter filter={categoryEventFilter} />
         <Select
           className="w-44"
           value={status}

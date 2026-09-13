@@ -20,6 +20,7 @@ import {
   Trophy,
   LineChart,
   Copy,
+  ShieldCheck,
 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassPanel } from "@/components/ui/glass-panel";
@@ -73,6 +74,7 @@ function manageActions(eventId: string): { label: string; href: string; icon: Lu
     { label: "Waitlist", href: `/ops/events/${eventId}/waitlist`, icon: ListOrdered },
     { label: "Ticket access", href: `/ops/events/${eventId}/access`, icon: Ticket },
     { label: "Teams", href: `/ops/events/${eventId}/teams`, icon: Users2 },
+    { label: "Staff & Volunteers", href: `/ops/events/${eventId}/staff`, icon: ShieldCheck },
     { label: "Competitions", href: `/ops/events/${eventId}/competitions`, icon: Trophy },
     { label: "Day-of Operations", href: `/ops/events/${eventId}/operations`, icon: Radio },
     { label: "Attendance Analytics", href: `/ops/events/${eventId}/attendance`, icon: BarChart3 },
